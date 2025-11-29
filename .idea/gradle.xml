@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="GradleMigrationSettings" migrationVersion="1" />
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="" />
+        <option name="gradleJvm" value="25" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/bantora-api" />
+            <option value="$PROJECT_DIR$/bantora-common" />
+            <option value="$PROJECT_DIR$/bantora-common/bantora-common-persistence" />
+            <option value="$PROJECT_DIR$/bantora-common/bantora-common-shared" />
+            <option value="$PROJECT_DIR$/bantora-database" />
+          </set>
+        </option>
       </GradleProjectSettings>
     </option>
   </component>

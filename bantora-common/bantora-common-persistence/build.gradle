@@ -1,0 +1,46 @@
+/*
+ * Created by Cascade AI
+ * Author       : Tsungai Kaviya
+ * Copyright    : TeraTech Solutions (Pvt) Ltd
+ * Date/Time    : 2025-11-28
+ * Email        : tkaviya@t3ratech.co.zw
+ */
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:${rootProject.ext.springBootVersion}"
+    }
+}
+
+dependencies {
+    // Project dependencies
+    implementation project(':bantora-common:bantora-common-shared')
+    
+    // Spring Boot Data
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
+    
+    // Database
+    implementation "org.postgresql:postgresql:${rootProject.ext.postgresqlVersion}"
+    implementation 'org.postgresql:r2dbc-postgresql:1.0.6.RELEASE'
+    implementation 'io.r2dbc:r2dbc-pool'
+    
+    // Hibernate
+    implementation "org.hibernate.orm:hibernate-core:${rootProject.ext.hibernateVersion}"
+    
+    // Flyway
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    
+    // Lombok
+    compileOnly "org.projectlombok:lombok:${rootProject.ext.lombokVersion}"
+    annotationProcessor "org.projectlombok:lombok:${rootProject.ext.lombokVersion}"
+    
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.testcontainers:testcontainers:1.20.4'
+    testImplementation 'org.testcontainers:postgresql:1.20.4'
+    testImplementation 'org.testcontainers:r2dbc:1.20.4'
+    testCompileOnly "org.projectlombok:lombok:${rootProject.ext.lombokVersion}"
+    testAnnotationProcessor "org.projectlombok:lombok:${rootProject.ext.lombokVersion}"
+}

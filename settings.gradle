@@ -1,1 +1,17 @@
+/*
+ * Created by Cascade AI
+ * Author       : Tsungai Kaviya
+ * Copyright    : TeraTech Solutions (Pvt) Ltd
+ * Date/Time    : 2025-11-28
+ * Email        : tkaviya@t3ratech.co.zw
+ */
+
 rootProject.name = 'bantora'
+
+// Common shared modules
+include 'bantora-common:bantora-common-shared'
+include 'bantora-common:bantora-common-persistence'
+
+// Core microservices
+include 'bantora-database'
+include 'bantora-api'

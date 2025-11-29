@@ -1,18 +1,54 @@
+/*
+ * Created by Cascade AI
+ * Author       : Tsungai Kaviya
+ * Copyright    : TeraTech Solutions (Pvt) Ltd
+ * Date/Time    : 2025-11-28
+ * Email        : tkaviya@t3ratech.co.zw
+ */
+
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '2.2.0'
+    id 'java'
+    id 'org.springframework.boot' version '3.5.0' apply false
+    id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
-group = 'zw.co.t3ratech'
-version = '1.0-SNAPSHOT'
-
-repositories {
-    mavenCentral()
+allprojects {
+    group = 'com.t3ratech.bantora'
+    version = '1.0.0'
+    
+    repositories {
+        mavenCentral()
+        maven { url 'https://repo.spring.io/milestone' }
+        maven { url 'https://projectlombok.org/edge-releases' }
+    }
 }
 
-dependencies {
-    testImplementation 'org.jetbrains.kotlin:kotlin-test'
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'io.spring.dependency-management'
+    
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
+        }
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = JavaVersion.VERSION_25
+    }
+    
+    tasks.withType(Test) {
+        useJUnitPlatform()
+    }
 }
 
-test {
-    useJUnitPlatform()
+// Shared version catalog
+ext {
+    springBootVersion = '3.5.0'
+    springCloudVersion = '2024.0.0'
+    postgresqlVersion = '42.7.4'
+    hibernateVersion = '6.6.3.Final'
+    argon2Version = '2.11'
+    jjwtVersion = '0.12.6'
+    springdocVersion = '2.6.0'
+    logbackVersion = '1.5.12'
+    lombokVersion = 'edge-SNAPSHOT'
 }

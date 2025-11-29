@@ -1,0 +1,199 @@
+version: '3.8'
+
+networks:
+  bantora-network:
+    name: ${BANTORA_NETWORK_NAME}
+    driver: ${BANTORA_NETWORK_DRIVER}
+
+volumes:
+  postgres-data:
+  redis-data:
+
+services:
+  # PostgreSQL Database
+  bantora-database:
+    container_name: ${DB_CONTAINER_NAME}
+    image: postgres:16-alpine
+    restart: ${BANTORA_RESTART_POLICY}
+    networks:
+      - bantora-network
+    ports:
+      - "${DB_PORT}:${DB_INTERNAL_PORT}"
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: ${BANTORA_TIME_ZONE}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ${DB_LOG_PATH}:${DB_LOG_DEST}
+      - ./bantora-database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ${DB_HEALTH_CMD}
+      interval: ${BANTORA_HEALTH_CHECK_INTERVAL}
+      timeout: ${BANTORA_HEALTH_CHECK_TIMEOUT}
+      retries: ${BANTORA_HEALTH_CHECK_RETRIES}
+      start_period: ${BANTORA_HEALTH_CHECK_START_PERIOD}
+
+  # Redis Cache
+  bantora-redis:
+    container_name: ${REDIS_CONTAINER_NAME}
+    image: redis:7-alpine
+    restart: ${BANTORA_RESTART_POLICY}
+    networks:
+      - bantora-network
+    ports:
+      - "${REDIS_PORT}:${REDIS_INTERNAL_PORT}"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    environment:
+      TZ: ${BANTORA_TIME_ZONE}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ${REDIS_HEALTH_CMD}
+      interval: ${BANTORA_HEALTH_CHECK_INTERVAL}
+      timeout: ${BANTORA_HEALTH_CHECK_TIMEOUT}
+      retries: ${BANTORA_HEALTH_CHECK_RETRIES}
+
+  # Bantora API Service
+  bantora-api:
+    container_name: ${API_CONTAINER_NAME}
+    build:
+      context: ${API_BUILD_CONTEXT}
+      dockerfile: ./bantora-api/Dockerfile
+      args:
+        GRADLE_VERSION: 8.11.1
+        JAVA_VERSION: 25
+    restart: ${BANTORA_RESTART_POLICY}
+    networks:
+      - bantora-network
+    ports:
+      - "${API_PORT}:${API_INTERNAL_PORT}"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      TZ: ${BANTORA_TIME_ZONE}
+      JAVA_OPTS: ${JAVA_OPTS}
+      BANTORA_CONFIG_LOCATION: ${BANTORA_CONFIG_LOCATION}
+      BANTORA_LOG_DEST: ${BANTORA_LOG_DEST}
+      
+      # Server
+      API_INTERNAL_PORT: ${API_INTERNAL_PORT}
+      
+      # Database
+      DB_INTERNAL_PORT: ${DB_INTERNAL_PORT}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      
+      # Redis
+      REDIS_INTERNAL_PORT: ${REDIS_INTERNAL_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      
+      # JWT
+      BANTORA_JWT_SECRET: ${BANTORA_JWT_SECRET}
+      BANTORA_JWT_ACCESS_TOKEN_EXPIRATION_MS: ${BANTORA_JWT_ACCESS_TOKEN_EXPIRATION_MS}
+      BANTORA_JWT_REFRESH_TOKEN_EXPIRATION_MS: ${BANTORA_JWT_REFRESH_TOKEN_EXPIRATION_MS}
+      BANTORA_JWT_ISSUER: ${BANTORA_JWT_ISSUER}
+      BANTORA_JWT_AUDIENCE: ${BANTORA_JWT_AUDIENCE}
+      
+      # Argon2id
+      BANTORA_ARGON2_ITERATIONS: ${BANTORA_ARGON2_ITERATIONS}
+      BANTORA_ARGON2_MEMORY: ${BANTORA_ARGON2_MEMORY}
+      BANTORA_ARGON2_PARALLELISM: ${BANTORA_ARGON2_PARALLELISM}
+      BANTORA_ARGON2_SALT_LENGTH: ${BANTORA_ARGON2_SALT_LENGTH}
+      BANTORA_ARGON2_HASH_LENGTH: ${BANTORA_ARGON2_HASH_LENGTH}
+      
+      # CORS
+      BANTORA_ALLOWED_ORIGINS: ${BANTORA_ALLOWED_ORIGINS}
+      
+      # SMS
+      BANTORA_SMS_PROVIDER: ${BANTORA_SMS_PROVIDER}
+      BANTORA_SMS_ACCOUNT_SID: ${BANTORA_SMS_ACCOUNT_SID}
+      BANTORA_SMS_AUTH_TOKEN: ${BANTORA_SMS_AUTH_TOKEN}
+      BANTORA_SMS_FROM_NUMBER: ${BANTORA_SMS_FROM_NUMBER}
+      BANTORA_SMS_VERIFICATION_CODE_LENGTH: ${BANTORA_SMS_VERIFICATION_CODE_LENGTH}
+      BANTORA_SMS_VERIFICATION_CODE_EXPIRY_MINUTES: ${BANTORA_SMS_VERIFICATION_CODE_EXPIRY_MINUTES}
+      BANTORA_SMS_MAX_ATTEMPTS: ${BANTORA_SMS_MAX_ATTEMPTS}
+      
+      # Rate Limiting
+      BANTORA_RATE_LIMIT_ENABLED: ${BANTORA_RATE_LIMIT_ENABLED}
+      BANTORA_RATE_LIMIT_REQUESTS_PER_MINUTE: ${BANTORA_RATE_LIMIT_REQUESTS_PER_MINUTE}
+      BANTORA_RATE_LIMIT_BURST_CAPACITY: ${BANTORA_RATE_LIMIT_BURST_CAPACITY}
+      
+      # Multi-language
+      BANTORA_DEFAULT_LOCALE: ${BANTORA_DEFAULT_LOCALE}
+      BANTORA_SUPPORTED_LOCALES: ${BANTORA_SUPPORTED_LOCALES}
+      
+      # Polls
+      BANTORA_POLL_MIN_OPTIONS: ${BANTORA_POLL_MIN_OPTIONS}
+      BANTORA_POLL_MAX_OPTIONS: ${BANTORA_POLL_MAX_OPTIONS}
+      BANTORA_POLL_MIN_DURATION_HOURS: ${BANTORA_POLL_MIN_DURATION_HOURS}
+      BANTORA_POLL_MAX_DURATION_DAYS: ${BANTORA_POLL_MAX_DURATION_DAYS}
+      BANTORA_POLL_APPROVAL_REQUIRED: ${BANTORA_POLL_APPROVAL_REQUIRED}
+      BANTORA_POLL_AI_MODERATION_ENABLED: ${BANTORA_POLL_AI_MODERATION_ENABLED}
+      
+    volumes:
+      - ${API_LOG_PATH}:${BANTORA_LOG_DEST}
+      - ${BANTORA_CONFIG_LOCATION}:${BANTORA_CONFIG_LOCATION}:ro
+    depends_on:
+      bantora-database:
+        condition: service_healthy
+      bantora-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ${API_HEALTH_CMD}
+      interval: ${BANTORA_HEALTH_CHECK_INTERVAL}
+      timeout: ${BANTORA_HEALTH_CHECK_TIMEOUT}
+      retries: ${BANTORA_HEALTH_CHECK_RETRIES}
+      start_period: ${BANTORA_HEALTH_CHECK_START_PERIOD}
+
+  # Bantora Web Service (Flutter)
+  bantora-web:
+    container_name: ${WEB_CONTAINER_NAME}
+    build:
+      context: ./bantora-web
+      dockerfile: Dockerfile
+    restart: ${BANTORA_RESTART_POLICY}
+    networks:
+      - bantora-network
+    ports:
+      - "${WEB_PORT}:${WEB_INTERNAL_PORT}"
+    environment:
+      TZ: ${BANTORA_TIME_ZONE}
+    volumes:
+      - ${WEB_LOG_PATH}:/var/log/nginx
+    depends_on:
+      bantora-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:${WEB_INTERNAL_PORT}/health"]
+      interval: ${BANTORA_HEALTH_CHECK_INTERVAL}
+      timeout: ${BANTORA_HEALTH_CHECK_TIMEOUT}
+      retries: ${BANTORA_HEALTH_CHECK_RETRIES}
+      start_period: 30s
+
+  # Nginx Gateway
+  bantora-gateway:
+    container_name: ${GATEWAY_CONTAINER_NAME}
+    image: ${GATEWAY_IMAGE}
+    restart: ${BANTORA_RESTART_POLICY}
+    networks:
+      - bantora-network
+    ports:
+      - "${GATEWAY_PORT}:${GATEWAY_INTERNAL_PORT}"
+    environment:
+      TZ: ${BANTORA_TIME_ZONE}
+    volumes:
+      - ${GATEWAY_NGINX_CONFIG}:/etc/nginx/nginx.conf:ro
+      - ${GATEWAY_LOG_PATH}:/var/log/nginx
+    depends_on:
+      bantora-api:
+        condition: service_healthy
+      bantora-web:
+        condition: service_healthy
+    healthcheck:
+      test: ${GATEWAY_HEALTH_CMD}
+      interval: ${BANTORA_HEALTH_CHECK_INTERVAL}
+      timeout: ${BANTORA_HEALTH_CHECK_TIMEOUT}
+      retries: ${BANTORA_HEALTH_CHECK_RETRIES}

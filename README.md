@@ -61,13 +61,17 @@ The system is extensible for OpenAI, Llama, DeepSeek, or custom models.
 
 ### **Backend**
 
-* Spring Boot (Java)
-* PostgreSQL + Hibernate
-* Redis Cache
-* REST API
-* Swagger API documentation
-* JWT authentication (Argon2id hashing – quantum-safe)
+* Spring Boot 3.5.0 with WebFlux (Reactive, Pure Java)
+* **JDK 25** (OpenJDK) - Strictly enforced
+* **Gradle 9.2.1** (supports JDK 25)
+* **Lombok edge-SNAPSHOT** (JDK 25 compatible)
+* PostgreSQL 16 + Hibernate + R2DBC (Reactive)
+* Redis 7.4 (Cache & Rate Limiting)
+* RESTful Reactive API
+* Swagger/OpenAPI 3.0 documentation
+* JWT authentication with RS256 (Argon2id hashing – quantum-safe)
 * Role-Based Access Control (RBAC)
+* Phone number as unique identifier (E.164 format)
 
 ### **Infrastructure**
 
@@ -191,13 +195,73 @@ Fork → Create PR → Peer review → Merge.
 
 ```
 bantora/
- ├── app/                # Flutter frontend  
- ├── backend/            # Spring Boot backend  
- ├── ai-service/         # AI poll generation  
- ├── infra/              # Terraform scripts  
- ├── docker/             # Docker images & compose  
- ├── docs/               # Architecture docs  
+ ├── bantora-api/                      # RESTful Reactive API (Spring Boot WebFlux)
+ ├── bantora-web/                      # Web interface (Flutter Web/SPA)
+ ├── bantora-common/
+ │   ├── bantora-common-shared/        # Shared DTOs, utilities, exceptions
+ │   └── bantora-common-persistence/   # JPA entities, repositories
+ ├── bantora-database/                 # PostgreSQL initialization scripts
+ ├── bantora-gateway/                  # Nginx reverse proxy configuration
+ ├── logs/                             # Service logs
+ ├── .env                              # Environment configuration
+ ├── docker-compose.yml                # Docker Compose orchestration
+ ├── bantora-docker.sh                 # Management script
+ ├── ARCHITECTURE.md                   # Technical architecture documentation
  └── README.md
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **JDK 25** (OpenJDK) - MANDATORY
+- **Docker** and **Docker Compose**
+- **Gradle 9.2.1** (wrapper included - supports JDK 25)
+- **Flutter 3.27.1** (for web/mobile development)
+
+### Setup & Run
+
+1. **Clone the repository**
+```bash
+git clone https://github.com/t3ratech/bantora.git
+cd bantora
+```
+
+2. **Configure environment**
+```bash
+# Review and update .env file with your settings
+# At minimum, configure:
+# - Database credentials
+# - JWT secret
+# - SMS provider credentials (Twilio/Africa's Talking)
+```
+
+3. **Build and start all services**
+```bash
+./bantora-docker.sh -rrr bantora-database bantora-redis bantora-api bantora-web bantora-gateway
+```
+
+4. **Check service status**
+```bash
+./bantora-docker.sh --status
+```
+
+5. **Access the platform**
+- Web UI: http://localhost:8080
+- API: http://localhost:8081/api/v1
+- Swagger UI: http://localhost:8081/swagger-ui.html
+- Gateway: http://localhost:8083
+
+### Development Workflow
+
+```bash
+# Rebuild a specific service
+./bantora-docker.sh -rrr bantora-api
+
+# View logs
+./bantora-docker.sh --logs --tail 200 bantora-api
+
+# Stop all services
+./bantora-docker.sh --cleanup
 ```
 
 ---
