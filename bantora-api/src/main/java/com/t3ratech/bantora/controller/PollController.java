@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
+@RequestMapping("/api")
 @CrossOrigin(origins = "*")
 public class PollController {
     
