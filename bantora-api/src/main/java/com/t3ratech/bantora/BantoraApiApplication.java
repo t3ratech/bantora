@@ -14,13 +14,16 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration;
 
+import org.springframework.scheduling.annotation.EnableScheduling;
+
+@EnableScheduling
 @SpringBootApplication(exclude = {
-    DataSourceAutoConfiguration.class,
-    HibernateJpaAutoConfiguration.class,
-    R2dbcAutoConfiguration.class
+        DataSourceAutoConfiguration.class,
+        HibernateJpaAutoConfiguration.class,
+        R2dbcAutoConfiguration.class
 })
 public class BantoraApiApplication {
-    
+
     public static void main(String[] args) {
         SpringApplication.run(BantoraApiApplication.class, args);
     }

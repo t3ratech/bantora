@@ -22,33 +22,36 @@ To empower Africans by providing a transparent, secure, and AI-driven platform f
 
 ## 💡 Core Concept
 
-BANTORA acts as a **Pan-African digital referendum engine**.
-Users can:
+BANTORA acts as a **Pan-African digital referendum engine** where ideas evolve into consensus.
 
-* Vote on major continental questions
-* Propose ideas, reforms, or development projects
-* See AI-generated polls based on community discussions
-* Participate in governance debates (AU, SADC, ECOWAS, EAC, etc.)
-* Build a historical record of what Africans believe, want, and demand
+The flow is simple:
+1.  **Propose**: Users submit raw ideas for reforms, projects, or policies.
+2.  **AI Processing**: The system (via Gemini API) analyzes these ideas daily (or on restart), summarizes them, and converts them into structured polls or questions.
+3.  **Vote**: Users vote on these summarized ideas/polls.
+    *   **Upvote** an idea.
+    *   **Vote Yes/No** on a poll.
+    *   **Choose** between multiple options.
+4.  **Consensus**: Items with the most upvotes or "Yes" votes are deemed "Popular Concepts" and move to a prominent list.
 
-When millions vote independently, the results become impossible to ignore.
+**The Web UI features a 3-Column Layout:**
+*   **Left Column (Popular)**: The "Hall of Fame" for ideas and polls that have gained significant traction.
+*   **Middle Column (New/AI)**: Freshly generated polls and summaries created by the AI from user submissions.
+*   **Right Column (Raw)**: A live feed of raw ideas posted by users, waiting to be picked up by the AI.
+
 *One platform. One voice. One Africa.*
 
 ---
 
 ## 🤖 AI Integration
 
-AI automatically:
+The **AI Service** is the engine that turns noise into signal.
 
-* Reads user submissions
-* Detects common themes
-* Generates structured polls
-* Groups related ideas (e.g., “Cape to Cairo rail” vs. “Cape to Cairo highway”)
-* Classifies whether a topic belongs at **SADC level**, **AU level**, or **national level**
-* Alerts moderators to duplicates, spam, or low-quality proposals
+*   **Summarization**: Uses **Gemini API** to read user ideas and return a concise, neutral summary.
+*   **Linkage**: Clicking on an AI-generated summary takes the user back to the original raw idea for full context.
+*   **Poll Generation**: Automatically creates voting options based on the idea's content.
+*   **Scheduling**: AI processing runs once a day or when the system is restarted to process new batch of ideas.
 
-Initial AI provider: **Gemini API (free tier)**
-The system is extensible for OpenAI, Llama, DeepSeek, or custom models.
+*Note: Users can only vote ONCE per poll/idea. To ensure this, login via phone number is mandatory.*
 
 ---
 
@@ -107,12 +110,16 @@ The system is extensible for OpenAI, Llama, DeepSeek, or custom models.
 
 ### 🎙 **User Features**
 
-* Create polls
-* Vote on any poll
-* Submit ideas or proposals
-* View results in real time
-* Multi-language support
-* Anonymous voting option
+*   **Login**: Secure login via phone number (Unique Identifier).
+*   **Propose**: Submit raw ideas for the continent.
+*   **Vote**:
+    *   Strict **One User, One Vote** policy.
+    *   Upvote ideas or vote on polls.
+*   **View**:
+    *   **Popular Concepts** (Left Column).
+    *   **New AI Polls** (Middle Column).
+    *   **Raw Feed** (Right Column).
+*   **Drill-down**: Click summaries to see original user posts.
 
 ### 🧠 **AI Features**
 

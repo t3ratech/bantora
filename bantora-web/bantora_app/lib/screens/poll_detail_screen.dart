@@ -19,7 +19,6 @@ class PollDetailScreen extends StatefulWidget {
 class _PollDetailScreenState extends State<PollDetailScreen> {
   String? _selectedOptionId;
   bool _voting = false;
-  bool _anonymous = false;
   bool _hasVoted = false;
 
   int get _totalVotes {
@@ -45,7 +44,6 @@ class _PollDetailScreenState extends State<PollDetailScreen> {
     final success = await widget.apiService.vote(
       pollId: widget.poll.id,
       optionId: _selectedOptionId!,
-      anonymous: _anonymous,
     );
 
     setState(() {
@@ -156,15 +154,7 @@ class _PollDetailScreenState extends State<PollDetailScreen> {
             const SizedBox(height: 16),
             ...widget.poll.options.map((option) => _buildVoteOption(option)),
             const SizedBox(height: 16),
-            CheckboxListTile(
-              title: const Text('Vote anonymously'),
-              subtitle: const Text('Your identity will not be recorded'),
-              value: _anonymous,
-              onChanged: (value) {
-                setState(() => _anonymous = value ?? false);
-              },
-              activeColor: Colors.deepPurple,
-            ),
+
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _voting ? null : _vote,

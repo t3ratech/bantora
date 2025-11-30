@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/poll.dart';
+import '../models/idea.dart';
 import '../services/api_service.dart';
-import 'create_poll_screen.dart';
 import 'poll_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -14,113 +14,163 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Poll> _polls = [];
+  List<Poll> _popularPolls = [];
+  List<Poll> _newPolls = [];
+  List<Idea> _rawIdeas = [];
   bool _loading = true;
-  String _filter = 'ALL';
+  final TextEditingController _ideaController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _loadPolls();
+    _loadData();
   }
 
-  Future<void> _loadPolls() async {
+  Future<void> _loadData() async {
     setState(() => _loading = true);
+    // In a real app, these would be separate API calls with filters
     final polls = await widget.apiService.getPolls();
+    final ideas = await widget.apiService.getIdeas();
+
     setState(() {
-      _polls = polls;
+      // Mocking logic for columns
+      _popularPolls = polls.where((p) => p.totalVotes > 10).toList();
+      _newPolls = polls.where((p) => p.totalVotes <= 10).toList();
+      _rawIdeas = ideas;
       _loading = false;
     });
   }
 
-  List<Poll> get _filteredPolls {
-    if (_filter == 'ALL') return _polls;
-    return _polls.where((poll) => poll.status == _filter).toList();
+  Future<void> _submitIdea() async {
+    if (_ideaController.text.isEmpty) return;
+    
+    final success = await widget.apiService.createIdea(_ideaController.text);
+    if (success) {
+      _ideaController.clear();
+      _loadData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Idea submitted successfully!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to submit idea')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Bantora Polls'),
+        title: const Text('Bantora'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (value) {
-              setState(() => _filter = value);
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'ALL', child: Text('All Polls')),
-              const PopupMenuItem(value: 'ACTIVE', child: Text('Active')),
-              const PopupMenuItem(value: 'PENDING', child: Text('Pending')),
-              const PopupMenuItem(value: 'COMPLETED', child: Text('Completed')),
-            ],
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
           ),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadPolls,
-              child: _filteredPolls.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _filteredPolls.length,
-                      itemBuilder: (context, index) {
-                        return _buildPollCard(_filteredPolls[index]);
-                      },
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth < 900) {
+                  return const Center(child: Text("Please use a larger screen for the 3-column view."));
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Left Column: Popular
+                    Expanded(
+                      child: _buildColumn(
+                        title: 'Popular Concepts',
+                        color: Colors.amber.shade100,
+                        children: _popularPolls.map((p) => _buildPollCard(p)).toList(),
+                      ),
                     ),
+                    // Middle Column: New/AI
+                    Expanded(
+                      child: _buildColumn(
+                        title: 'New AI Polls',
+                        color: Colors.blue.shade50,
+                        children: _newPolls.map((p) => _buildPollCard(p)).toList(),
+                      ),
+                    ),
+                    // Right Column: Raw Ideas
+                    Expanded(
+                      child: _buildColumn(
+                        title: 'Raw Ideas Feed',
+                        color: Colors.grey.shade100,
+                        children: [
+                          _buildIdeaInput(),
+                          ..._rawIdeas.map((i) => _buildIdeaCard(i)),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CreatePollScreen(apiService: widget.apiService),
-            ),
-          ).then((_) => _loadPolls());
-        },
-        backgroundColor: Colors.deepPurple,
-        icon: const Icon(Icons.add),
-        label: const Text('Create Poll'),
-      ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
+  Widget _buildColumn({
+    required String title,
+    required Color color,
+    required List<Widget> children,
+  }) {
+    return Container(
+      color: color,
+      padding: const EdgeInsets.all(16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.poll_outlined, size: 100, color: Colors.grey[400]),
-          const SizedBox(height: 16),
           Text(
-            'No polls available',
-            style: TextStyle(fontSize: 20, color: Colors.grey[600]),
+            title,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Create your first poll!',
-            style: TextStyle(fontSize: 16, color: Colors.grey[500]),
+          const SizedBox(height: 16),
+          Expanded(
+            child: ListView(
+              children: children,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPollCard(Poll poll) {
-    final totalVotes = poll.options.fold<int>(
-      0,
-      (sum, option) => sum + option.votesCount,
-    );
-
+  Widget _buildIdeaInput() {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextField(
+              controller: _ideaController,
+              decoration: const InputDecoration(
+                hintText: 'Propose an idea...',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: _submitIdea,
+              child: const Text('Submit Idea'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPollCard(Poll poll) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -131,58 +181,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 apiService: widget.apiService,
               ),
             ),
-          ).then((_) => _loadPolls());
+          );
         },
-        borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      poll.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  _buildStatusChip(poll.status),
-                ],
+              Text(
+                poll.title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const SizedBox(height: 8),
-              Text(
-                poll.description,
-                style: TextStyle(color: Colors.grey[700]),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(Icons.how_to_vote, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$totalVotes votes',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  const SizedBox(width: 16),
-                  Icon(Icons.list, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${poll.options.length} options',
-                    style: TextStyle(color: Colors.grey[600]),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _formatDate(poll.createdAt),
-                    style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                  ),
-                ],
-              ),
+              Text(poll.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 8),
+              Text('${poll.totalVotes} votes', style: TextStyle(color: Colors.grey[600])),
             ],
           ),
         ),
@@ -190,54 +203,32 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStatusChip(String status) {
-    Color color;
-    switch (status) {
-      case 'ACTIVE':
-        color = Colors.green;
-        break;
-      case 'PENDING':
-        color = Colors.orange;
-        break;
-      case 'COMPLETED':
-        color = Colors.blue;
-        break;
-      default:
-        color = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+  Widget _buildIdeaCard(Idea idea) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(idea.content),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'User: ${idea.userPhone}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+                Text(
+                  '${idea.upvotes} upvotes',
+                  style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays > 7) {
-      return '${date.day}/${date.month}/${date.year}';
-    } else if (difference.inDays > 0) {
-      return '${difference.inDays}d ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}h ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m ago';
-    } else {
-      return 'Just now';
-    }
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/poll.dart';
+import '../models/idea.dart';
 
 class ApiService {
   final String baseUrl;
@@ -77,11 +78,46 @@ class ApiService {
     }
   }
 
+  // Get ideas
+  Future<List<Idea>> getIdeas() async {
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/ideas'));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true && data['data'] != null) {
+          return (data['data'] as List)
+              .map((json) => Idea.fromJson(json))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching ideas: $e');
+      return [];
+    }
+  }
+
+  // Create idea
+  Future<bool> createIdea(String content) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/ideas'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'content': content}),
+      );
+      
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      print('Error creating idea: $e');
+      return false;
+    }
+  }
+
   // Vote on poll
   Future<bool> vote({
     required String pollId,
     required String optionId,
-    bool anonymous = false,
   }) async {
     try {
       final response = await http.post(
@@ -90,7 +126,6 @@ class ApiService {
         body: jsonEncode({
           'pollId': pollId,
           'optionId': optionId,
-          'anonymous': anonymous,
         }),
       );
       

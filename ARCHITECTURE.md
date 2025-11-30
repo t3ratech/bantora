@@ -23,7 +23,7 @@
 
 ## Overview
 
-Bantora is a Pan-African polling, consensus, and civic engagement platform built on a microservices architecture using Kotlin, Spring Boot WebFlux, and JDK 25. The system provides scalability, quantum-safe security, and modern deployment capabilities for 1.4 billion Africans.
+Bantora is a Pan-African polling, consensus, and civic engagement platform built on a microservices architecture using Kotlin, Spring Boot WebFlux, and JDK 25. The system allows users to propose ideas, which are then processed by AI (Gemini) to create polls and summaries. The most popular ideas rise to the top, creating a clear signal of the continent's will.
 
 This document serves as the definitive technical guide for all Bantora development work. Every implementation task MUST be verified against these specifications before coding begins.
 
@@ -81,7 +81,14 @@ This modular approach provides:
 - Dynamic language switching
 - RTL support for Arabic
 
-### 5. Regional Federation
+### 5. AI Content Pipeline
+- **Input**: Raw user ideas (Right Column).
+- **Processing**: Scheduled job (Daily/On Restart) sends ideas to **Gemini API**.
+- **Output**: Summarized concepts and structured polls (Middle Column).
+- **Linkage**: Summaries maintain a reference to the original idea ID.
+- **Popularity**: High engagement moves items to the "Popular" list (Left Column).
+
+### 6. Regional Federation
 - Polls categorized by scope: National, SADC, ECOWAS, EAC, AU, Continental
 - Regional moderators and administrators
 - Geolocation-based poll filtering
@@ -128,12 +135,12 @@ bantora.security.jwt.expiration.ms=86400000
 ## Security Standards
 
 ### Authentication Flow
-1. User registers with phone number
-2. SMS verification code sent
-3. User confirms code and sets password
-4. Password hashed with Argon2id (time=3, memory=65536, parallelism=4)
-5. JWT access token issued (15 min expiry)
-6. Refresh token issued (7 days expiry)
+1. User registers/logins with phone number (Unique Identifier).
+2. SMS verification code sent.
+3. User confirms code and sets password.
+4. Password hashed with Argon2id. (time=3, memory=65536, parallelism=24
+5. JWT access token issued. (7 days expiry)
+6. **Strict Enforcement**: Users must be logged in to vote or post. One vote per user per poll/idea is enforced at the database level.
 
 ### Authorization (RBAC)
 - **Roles**: USER, MODERATOR, ADMIN, SUPERADMIN
@@ -152,9 +159,10 @@ bantora.security.jwt.expiration.ms=86400000
 ```
 bantora_db (PostgreSQL 16)
   ├── users (phone_number, password_hash, roles, verified, country_code)
-  ├── polls (id, title, description, scope, region, creator_id, status)
+  ├── ideas (id, user_id, content, timestamp, status)  <-- Raw user proposals
+  ├── polls (id, title, description, idea_id, scope, region, creator_id, status) <-- Linked to ideas
   ├── poll_options (id, poll_id, text, votes_count)
-  ├── votes (id, poll_id, option_id, user_id, timestamp, anonymous)
+  ├── votes (id, poll_id, option_id, user_id, timestamp) <-- Unique constraint (poll_id, user_id)
   ├── verification_codes (phone_number, code, expires_at, attempts)
   ├── refresh_tokens (token, user_id, expires_at, revoked)
   └── audit_logs (action, user_id, resource, timestamp, details)

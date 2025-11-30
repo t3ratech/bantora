@@ -16,12 +16,12 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class Argon2PasswordEncoder implements PasswordEncoder {
-    
+
     private final int iterations;
     private final int memory;
     private final int parallelism;
     private final Argon2 argon2;
-    
+
     public Argon2PasswordEncoder(
             @Value("${bantora.security.argon2.iterations}") int iterations,
             @Value("${bantora.security.argon2.memory}") int memory,
@@ -33,17 +33,16 @@ public class Argon2PasswordEncoder implements PasswordEncoder {
         this.memory = memory;
         this.parallelism = parallelism;
         this.argon2 = Argon2Factory.create(
-            Argon2Factory.Argon2Types.ARGON2id,
-            saltLength,
-            hashLength
-        );
+                Argon2Factory.Argon2Types.ARGON2id,
+                saltLength,
+                hashLength);
     }
-    
+
     @Override
     public String encode(CharSequence rawPassword) {
         return argon2.hash(iterations, memory, parallelism, rawPassword.toString().toCharArray());
     }
-    
+
     @Override
     public boolean matches(CharSequence rawPassword, String encodedPassword) {
         try {
@@ -52,7 +51,7 @@ public class Argon2PasswordEncoder implements PasswordEncoder {
             return false;
         }
     }
-    
+
     @Override
     public boolean upgradeEncoding(String encodedPassword) {
         return false;

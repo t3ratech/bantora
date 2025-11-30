@@ -8,7 +8,6 @@
 
 package com.t3ratech.bantora.controller;
 
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -17,7 +16,6 @@ import java.time.Instant;
 import java.util.Map;
 
 @RestController
-@CrossOrigin(origins = "*")
 public class HealthController {
     
     @GetMapping("/health")
