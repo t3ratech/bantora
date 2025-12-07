@@ -2,8 +2,20 @@
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+gradle/wrapper/*.zip
+
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
 
 # IDE
 .idea/
@@ -38,7 +50,10 @@ logs/
 # Test output
 test-output/
 coverage/
+playwright-report/
+test-results/
 
 # Docker volumes
 postgres-data/
 redis-data/
+Question5

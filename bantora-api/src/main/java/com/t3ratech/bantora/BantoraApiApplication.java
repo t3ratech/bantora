@@ -10,18 +10,14 @@ package com.t3ratech.bantora;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
-import org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration;
-
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
+import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
+
 @EnableScheduling
-@SpringBootApplication(exclude = {
-        DataSourceAutoConfiguration.class,
-        HibernateJpaAutoConfiguration.class,
-        R2dbcAutoConfiguration.class
-})
+@EnableR2dbcRepositories(basePackages = "com.t3ratech.bantora.persistence.repository")
+@SpringBootApplication(exclude = JpaRepositoriesAutoConfiguration.class)
 public class BantoraApiApplication {
 
     public static void main(String[] args) {

@@ -18,7 +18,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "ideas")
+@jakarta.persistence.Table(name = "ideas")
+@org.springframework.data.relational.core.mapping.Table("ideas")
 @Data
 @Builder
 @NoArgsConstructor

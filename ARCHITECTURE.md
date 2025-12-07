@@ -235,6 +235,14 @@ bantora_db (PostgreSQL 16)
 - **Container**: Docker with multi-stage builds
 - **Orchestration**: Docker Compose
 
+### Frontend Stack (Flutter)
+- **Framework**: Flutter 3.38.3
+- **Language**: Dart 3.10.1
+- **HTTP Client**: http ^1.6.0
+- **Build Size**: 2.5 MB (main.dart.js)
+- **Web Renderer**: HTML renderer (optimized)
+- **Icons**: Tree-shaken (99.5% size reduction)
+
 ### Build Commands
 ```bash
 # Build all modules
@@ -254,18 +262,18 @@ bantora_db (PostgreSQL 16)
 
 | Service | Internal Port | External Port | Internal URL | External URL |
 |---------|--------------|---------------|--------------|-------------|
-| bantora-gateway | 8083 | 8083 | http://bantora-gateway:8083 | http://localhost:8083 |
+| bantora-gateway | 3083 | 3083 | http://bantora-gateway:3083 | http://localhost:3083 |
 | bantora-database | 5432 | 5432 | jdbc:postgresql://bantora-database:5432/bantora_db | localhost:5432 |
-| bantora-api | 8081 | 8081 | http://bantora-api:8081 | http://localhost:8081 |
-| bantora-web | 8080 | 8080 | http://bantora-web:8080 | http://localhost:8080 |
+| bantora-api | 3081 | 3081 | http://bantora-api:3081 | http://localhost:3081 |
+| bantora-web | 3080 | 3080 | http://bantora-web:3080 | http://localhost:3080 |
 | bantora-redis | 6379 | 6379 | redis://bantora-redis:6379 | localhost:6379 |
 
 ### Application URLs
-- **Homepage**: `http://localhost:8080/`
-- **API Base**: `http://localhost:8081/api/v1`
-- **API Health**: `http://localhost:8081/actuator/health`
-- **Swagger UI**: `http://localhost:8081/swagger-ui.html`
-- **Gateway**: `http://localhost:8083/`
+- **Homepage**: `http://localhost:3080/`
+- **API Base**: `http://localhost:3081/api/v1`
+- **API Health**: `http://localhost:3081/actuator/health`
+- **Swagger UI**: `http://localhost:3081/swagger-ui.html`
+- **Gateway**: `http://localhost:3083/`
 
 ## Technical Specifications
 
@@ -354,8 +362,8 @@ class OpenApiConfig {
 1. Clone repository
 2. Copy `.env.example` to `.env` and configure
 3. Run `./bantora-docker.sh -rrr bantora-database bantora-api bantora-web`
-4. Access Swagger UI at `http://localhost:8081/swagger-ui.html`
-5. Access web application at `http://localhost:8080`
+4. Access Swagger UI at `http://localhost:3081/swagger-ui.html`
+5. Access web application at `http://localhost:3080`
 
 ### Testing Strategy
 - **Unit Tests**: JUnit 5 + MockK

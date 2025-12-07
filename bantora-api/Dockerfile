@@ -6,6 +6,8 @@ ARG JAVA_VERSION=25
 WORKDIR /build
 
 # Copy Gradle wrapper and configuration files
+RUN mkdir -p /opt/gradle-wrapper
+COPY gradle/wrapper/gradle-9.2.1-bin.zip /opt/gradle-wrapper/
 COPY gradle gradle
 COPY gradlew .
 COPY gradlew.bat .
@@ -21,6 +23,11 @@ COPY bantora-common/bantora-common-shared/build.gradle bantora-common/bantora-co
 COPY bantora-common/bantora-common-persistence/build.gradle bantora-common/bantora-common-persistence/
 COPY bantora-database/build.gradle bantora-database/
 COPY bantora-api/build.gradle bantora-api/
+COPY bantora-web/build.gradle bantora-web/
+COPY bantora-web/src bantora-web/src
+
+# Debug: List directories
+RUN ls -la && ls -la bantora-web
 
 # Download dependencies
 RUN ./gradlew dependencies --no-daemon || true
@@ -43,13 +50,14 @@ WORKDIR /opt/bantora
 COPY --from=builder /build/bantora-api/build/libs/bantora-api.jar app.jar
 
 # Create log directory
-RUN mkdir -p /var/log/bantora && \
-    chmod 755 /var/log/bantora
+ARG BANTORA_LOG_DEST=/var/log/bantora
+RUN mkdir -p ${BANTORA_LOG_DEST} && \
+  chmod 777 ${BANTORA_LOG_DEST}
 
 # Create non-root user
 RUN addgroup -g 1000 bantora && \
-    adduser -u 1000 -G bantora -s /bin/sh -D bantora && \
-    chown -R bantora:bantora /opt/bantora /var/log/bantora
+  adduser -u 1000 -G bantora -s /bin/sh -D bantora && \
+  chown -R bantora:bantora /opt/bantora ${BANTORA_LOG_DEST}
 
 USER bantora
 

@@ -137,6 +137,84 @@ The **AI Service** is the engine that turns noise into signal.
 
 ---
 
+## ✅ Implemented Features
+
+### 1. **Home Screen - Poll Feed**
+- Display all available polls in a card-based layout
+- Filter polls by status (All, Active, Pending, Completed)
+- Real-time poll statistics (votes count, options count)
+- Pull-to-refresh functionality
+- Status indicators with color coding:
+  - 🟢 **Active** - Green
+  - 🟠 **Pending** - Orange
+  - 🔵 **Completed** - Blue
+- Timestamps showing "5h ago", "2d ago", etc.
+- Empty state UI when no polls exist
+
+### 2. **Create Poll Screen**
+- **Form Fields**:
+  - Poll Title (minimum 10 characters)
+  - Description (minimum 20 characters)
+  - Scope selector with options: National, SADC, ECOWAS, EAC, AU, Continental
+- **Dynamic Poll Options**:
+  - Minimum 2 options required, Maximum 10 options allowed
+  - Add/remove options dynamically
+- Real-time form validation
+- Loading state during submission
+- Success/error notifications
+
+### 3. **Poll Detail & Voting Screen**
+- **Poll Information Display**: Title, description, total votes, scope, creation timestamp, status.
+- **Voting Interface**:
+  - Radio button selection for options
+  - Vote submission with loading state
+  - Confirmation feedback
+- **Results Visualization**:
+  - Horizontal progress bars for each option
+  - Percentage calculations and vote counts
+  - Color-coded results (purple theme)
+  - Automatically shown after voting or for completed polls
+
+### 4. **API Integration**
+- Full REST API client implementation
+- Endpoints integrated: `GET /api/polls`, `GET /api/polls/:id`, `POST /api/polls`, `POST /api/votes`
+- Error handling and fallback states
+- Configurable API base URL (default: http://localhost:8081)
+
+---
+
+## 🐳 Docker Deployment
+
+### Container Info
+- **Image**: bantora-web:latest
+- **Base**: nginx:alpine
+- **Port**: 3080
+- **Health Check**: /health endpoint (returns "OK")
+
+### Build Commands
+```bash
+# Flutter build
+cd bantora-web/bantora_app
+flutter build web --release
+
+# Docker build
+cd ..
+docker build -t bantora-web:latest .
+
+# Run container
+docker run -d --name bantora-web-app -p 3080:3080 bantora-web:latest
+```
+
+## 🚀 Running Services
+
+Currently active:
+- ✅ **Web App**: http://localhost:3080 (bantora-web-app)
+- ✅ **Database**: PostgreSQL 16 on port 5433
+- ✅ **Redis**: Redis 7 on port 6380
+- ⚠️ **API**: bantora-api (needs entityManagerFactory configuration)
+
+---
+
 ## 🚀 Roadmap
 
 ### **Phase 1 — MVP (2–4 weeks)**
@@ -253,7 +331,7 @@ cd bantora
 ```
 
 5. **Access the platform**
-- Web UI: http://localhost:8080
+- Web UI: http://localhost:3080
 - API: http://localhost:8081/api/v1
 - Swagger UI: http://localhost:8081/swagger-ui.html
 - Gateway: http://localhost:8083

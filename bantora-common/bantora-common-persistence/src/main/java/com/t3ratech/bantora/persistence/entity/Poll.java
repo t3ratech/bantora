@@ -20,7 +20,8 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "polls")
+@jakarta.persistence.Table(name = "polls")
+@org.springframework.data.relational.core.mapping.Table("polls")
 @Data
 @Builder
 @NoArgsConstructor

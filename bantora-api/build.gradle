@@ -43,9 +43,7 @@ dependencies {
     implementation 'org.postgresql:r2dbc-postgresql:1.0.6.RELEASE'
     runtimeOnly 'io.r2dbc:r2dbc-pool'
     
-    // Flyway migrations
-    implementation 'org.flywaydb:flyway-core'
-    implementation 'org.flywaydb:flyway-database-postgresql'
+
     
     // Swagger/OpenAPI
     implementation "org.springdoc:springdoc-openapi-starter-webflux-ui:${rootProject.ext.springdocVersion}"

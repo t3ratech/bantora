@@ -27,6 +27,8 @@ class Poll {
     required this.options,
   });
 
+  int get totalVotes => options.fold(0, (sum, item) => sum + item.votesCount);
+
   factory Poll.fromJson(Map<String, dynamic> json) {
     return Poll(
       id: json['id'],

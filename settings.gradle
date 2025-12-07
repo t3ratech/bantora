@@ -15,3 +15,4 @@ include 'bantora-common:bantora-common-persistence'
 // Core microservices
 include 'bantora-database'
 include 'bantora-api'
+include 'bantora-web'

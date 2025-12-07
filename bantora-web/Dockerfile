@@ -8,6 +8,6 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY bantora_app/build/web /usr/share/nginx/html
 
 # Expose port
-EXPOSE 8080
+EXPOSE 3080
 
 CMD ["nginx", "-g", "daemon off;"]
