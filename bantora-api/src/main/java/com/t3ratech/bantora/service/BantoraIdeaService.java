@@ -7,11 +7,11 @@ import com.t3ratech.bantora.repository.BantoraIdeaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -20,25 +20,19 @@ public class BantoraIdeaService {
 
     private final BantoraIdeaRepository ideaRepository;
 
-    @Transactional(readOnly = true)
-    public List<BantoraIdeaResponse> getPendingIdeas() {
-        List<BantoraIdea> ideas = ideaRepository.findByStatusOrderByCreatedAtDesc(BantoraIdeaStatus.PENDING);
-        return ideas.stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Flux<BantoraIdeaResponse> getPendingIdeas() {
+        return ideaRepository.findByStatusOrderByCreatedAtDesc(BantoraIdeaStatus.PENDING)
+                .map(this::toResponse);
     }
 
-    @Transactional(readOnly = true)
-    public List<BantoraIdeaResponse> getProcessedIdeas() {
-        List<BantoraIdea> ideas = ideaRepository.findByStatusOrderByCreatedAtDesc(BantoraIdeaStatus.PROCESSED);
-        return ideas.stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Flux<BantoraIdeaResponse> getProcessedIdeas() {
+        return ideaRepository.findByStatusOrderByCreatedAtDesc(BantoraIdeaStatus.PROCESSED)
+                .map(this::toResponse);
     }
 
-    @Transactional
-    public BantoraIdeaResponse createIdea(String userPhone, String content) {
+    public Mono<BantoraIdeaResponse> createIdea(String userPhone, String content) {
         BantoraIdea idea = BantoraIdea.builder()
+                .id(UUID.randomUUID())
                 .userPhone(userPhone)
                 .content(content)
                 .status(BantoraIdeaStatus.PENDING)
@@ -46,8 +40,8 @@ public class BantoraIdeaService {
                 .upvotes(0L)
                 .build();
 
-        BantoraIdea saved = ideaRepository.save(idea);
-        return toResponse(saved);
+        return ideaRepository.save(idea)
+                .map(this::toResponse);
     }
 
     private BantoraIdeaResponse toResponse(BantoraIdea idea) {

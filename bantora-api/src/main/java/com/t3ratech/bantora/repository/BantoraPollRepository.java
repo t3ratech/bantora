@@ -2,23 +2,22 @@ package com.t3ratech.bantora.repository;
 
 import com.t3ratech.bantora.entity.BantoraPoll;
 import com.t3ratech.bantora.enums.BantoraPollStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.r2dbc.repository.Query;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Flux;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface BantoraPollRepository extends JpaRepository<BantoraPoll, UUID> {
-    List<BantoraPoll> findByStatus(BantoraPollStatus status);
-
-    List<BantoraPoll> findByCreatorPhone(String creatorPhone);
-
-    @Query("SELECT p FROM BantoraPoll p WHERE p.status = 'ACTIVE' AND p.endTime > :now ORDER BY p.totalVotes DESC")
-    List<BantoraPoll> findActiveOrderByVotesDesc(LocalDateTime now);
-
-    @Query("SELECT p FROM BantoraPoll p WHERE p.status = 'ACTIVE' AND p.endTime > :now ORDER BY p.createdAt DESC")
-    List<BantoraPoll> findActiveOrderByCreatedDesc(LocalDateTime now);
+public interface BantoraPollRepository extends R2dbcRepository<BantoraPoll, UUID> {
+    Flux<BantoraPoll> findByStatus(BantoraPollStatus status);
+    Flux<BantoraPoll> findByCreatorPhone(String creatorPhone);
+    
+    @Query("SELECT * FROM bantora_polls WHERE status = 'ACTIVE' AND end_time > :now ORDER BY total_votes DESC")
+    Flux<BantoraPoll> findActiveOrderByVotesDesc(LocalDateTime now);
+    
+    @Query("SELECT * FROM bantora_polls WHERE status = 'ACTIVE' AND end_time > :now ORDER BY created_at DESC")
+    Flux<BantoraPoll> findActiveOrderByCreatedDesc(LocalDateTime now);
 }

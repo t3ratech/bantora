@@ -1,13 +1,13 @@
 package com.t3ratech.bantora.repository;
 
 import com.t3ratech.bantora.entity.BantoraPollOption;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import org.springframework.stereotype.Repository;
+import reactor.core.publisher.Flux;
 
-import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface BantoraPollOptionRepository extends JpaRepository<BantoraPollOption, UUID> {
-    List<BantoraPollOption> findByPollIdOrderByOptionOrder(UUID pollId);
+public interface BantoraPollOptionRepository extends R2dbcRepository<BantoraPollOption, UUID> {
+    Flux<BantoraPollOption> findByPollIdOrderByOptionOrder(UUID pollId);
 }

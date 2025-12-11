@@ -1,61 +1,46 @@
 package com.t3ratech.bantora.entity;
 
 import com.t3ratech.bantora.enums.BantoraIdeaStatus;
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity
-@Table(name = "bantora_ideas")
+@Table("bantora_ideas")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class BantoraIdea {
-
+    
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
-    @Column(name = "user_phone", nullable = false, length = 20)
+    
+    @Column("user_phone")
     private String userPhone;
-
-    @Column(name = "content", nullable = false, columnDefinition = "TEXT")
+    
+    @Column("content")
     private String content;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    
+    @Column("status")
     private BantoraIdeaStatus status;
-
-    @Column(name = "ai_summary", columnDefinition = "TEXT")
+    
+    @Column("ai_summary")
     private String aiSummary;
-
-    @Column(name = "created_at", nullable = false)
+    
+    @Column("created_at")
     private LocalDateTime createdAt;
-
-    @Column(name = "processed_at")
+    
+    @Column("processed_at")
     private LocalDateTime processedAt;
-
-    @Column(name = "upvotes", nullable = false)
+    
+    @Column("upvotes")
     @Builder.Default
     private Long upvotes = 0L;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_phone", referencedColumnName = "phone_number", insertable = false, updatable = false)
-    private BantoraUser user;
-
-    @PrePersist
-    protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-        if (status == null) {
-            status = BantoraIdeaStatus.PENDING;
-        }
-    }
 }

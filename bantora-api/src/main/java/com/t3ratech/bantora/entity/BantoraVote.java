@@ -1,66 +1,45 @@
 package com.t3ratech.bantora.entity;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Entity
-@Table(name = "bantora_votes", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "poll_id", "user_phone" })
-})
+@Table("bantora_votes")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class BantoraVote {
-
+    
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
-    @Column(name = "poll_id", nullable = false)
+    
+    @Column("poll_id")
     private UUID pollId;
-
-    @Column(name = "option_id", nullable = false)
+    
+    @Column("option_id")
     private UUID optionId;
-
-    @Column(name = "user_phone", length = 20)
+    
+    @Column("user_phone")
     private String userPhone;
-
-    @Column(name = "anonymous", nullable = false)
+    
+    @Column("anonymous")
     @Builder.Default
     private Boolean anonymous = false;
-
-    @Column(name = "voted_at", nullable = false)
+    
+    @Column("voted_at")
     private LocalDateTime votedAt;
-
-    @Column(name = "ip_address", length = 45)
+    
+    @Column("ip_address")
     private String ipAddress;
-
-    @Column(name = "user_agent", length = 500)
+    
+    @Column("user_agent")
     private String userAgent;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "poll_id", referencedColumnName = "id", insertable = false, updatable = false)
-    private BantoraPoll poll;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "option_id", referencedColumnName = "id", insertable = false, updatable = false)
-    private BantoraPollOption option;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_phone", referencedColumnName = "phone_number", insertable = false, updatable = false)
-    private BantoraUser user;
-
-    @PrePersist
-    protected void onCreate() {
-        if (votedAt == null) {
-            votedAt = LocalDateTime.now();
-        }
-    }
 }

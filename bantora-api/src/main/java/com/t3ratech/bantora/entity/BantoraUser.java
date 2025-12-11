@@ -1,79 +1,56 @@
 package com.t3ratech.bantora.entity;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
-@Entity
-@Table(name = "bantora_users")
+@Table("bantora_users")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class BantoraUser {
-
+    
     @Id
-    @Column(name = "phone_number", length = 20)
+    @Column("phone_number")
     private String phoneNumber;
-
-    @Column(name = "password_hash", nullable = false)
+    
+    @Column("password_hash")
     private String passwordHash;
-
-    @Column(name = "full_name", length = 100)
+    
+    @Column("full_name")
     private String fullName;
-
-    @Column(name = "email", length = 100)
+    
+    @Column("email")
     private String email;
-
-    @Column(name = "country_code", nullable = false, length = 2)
+    
+    @Column("country_code")
     private String countryCode;
-
-    @Column(name = "verified", nullable = false)
+    
+    @Column("verified")
     @Builder.Default
     private Boolean verified = false;
-
-    @Column(name = "enabled", nullable = false)
+    
+    @Column("enabled")
     @Builder.Default
     private Boolean enabled = true;
-
-    @Column(name = "preferred_language", nullable = false, length = 5)
+    
+    @Column("preferred_language")
     @Builder.Default
     private String preferredLanguage = "en";
-
-    @Column(name = "created_at", nullable = false)
+    
+    @Column("created_at")
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
+    
+    @Column("updated_at")
     private LocalDateTime updatedAt;
-
-    @Column(name = "last_login_at")
+    
+    @Column("last_login_at")
     private LocalDateTime lastLoginAt;
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "bantora_user_roles", joinColumns = @JoinColumn(name = "phone_number"))
-    @Column(name = "role", length = 20)
-    @Builder.Default
-    private Set<String> roles = new HashSet<>();
-
-    @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        if (createdAt == null) {
-            createdAt = now;
-        }
-        if (updatedAt == null) {
-            updatedAt = now;
-        }
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }
