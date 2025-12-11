@@ -68,6 +68,8 @@ print_usage() {
     echo "  --cleanup           Stop and remove all containers"
     echo "  --destroy-all       Stop and remove all containers (same as --cleanup)"
     echo "  --full-cleanup      Stop, remove containers and clean Bantora resources only"
+    echo "  --deploy            Deploy to Google Cloud Platform"
+    echo "  --build-web [url]   Build Flutter web application (optional: API URL)"
     echo "  -h, --help          Show this help message"
     echo ""
     echo "Services: ${SERVICES[*]}"
@@ -1325,6 +1327,106 @@ run_all_tests() {
 }
 
 # =============================================================================
+# DEPLOYMENT FUNCTIONS
+# =============================================================================
+
+# Build Flutter web
+build_flutter_web() {
+    local api_url=${1}
+    echo -e "${CYAN}=== Building Flutter Web ===${NC}"
+    cd "$SCRIPT_DIR/bantora-web/bantora_app"
+    
+    if ! command -v flutter &> /dev/null; then
+        echo -e "${RED}Flutter not installed. Please install Flutter first.${NC}"
+        echo -e "${YELLOW}Visit: https://flutter.dev/docs/get-started/install${NC}"
+        return 1
+    fi
+    
+    flutter pub get
+    
+    if [ -n "$api_url" ]; then
+        echo -e "${BLUE}Building with API_URL: $api_url${NC}"
+        # Pass API_URL as Dart environment variable
+        flutter build web --release --dart-define=API_URL="$api_url"
+    else
+        echo -e "${BLUE}Building with default API URL${NC}"
+        flutter build web --release
+    fi
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}Flutter web build complete!${NC}"
+        echo -e "${BLUE}Output: $SCRIPT_DIR/bantora-web/bantora_app/build/web${NC}"
+    else
+        echo -e "${RED}Flutter web build failed!${NC}"
+        return 1
+    fi
+}
+
+# Deploy to GCP
+deploy() {
+    echo -e "${CYAN}=== Deploying to Google Cloud ===${NC}"
+    
+    
+    # Fetch API URL from Terraform if available
+    echo -e "${BLUE}Fetching API URL...${NC}"
+    local api_url=$(cd "$SCRIPT_DIR/terraform" && terraform output -raw bantora_api_url 2> /dev/null || echo "")
+    
+    # Handle the "Warning: No outputs found" case which might be captured in api_url if stderr redirection fails or if proper exit code isn't returned
+    if [[ "$api_url" == *"Warning"* ]] || [[ "$api_url" == *"::"* ]] || [ -z "$api_url" ]; then
+        echo -e "${YELLOW}API URL not found. Proceeding with initial deployment...${NC}"
+        api_url=""
+    else
+        api_url="${api_url}/api"
+        echo -e "${GREEN}Found URL: $api_url${NC}"
+    fi
+    
+    # Build Web (with or without API URL)
+    if ! build_flutter_web "$api_url"; then
+        echo -e "${RED}Deployment failed: Web build failed${NC}"
+        exit 1
+    fi
+
+    local deploy_script="$SCRIPT_DIR/ops/scripts/setupGCP.sh"
+    
+    if [ ! -f "$deploy_script" ]; then
+        echo -e "${RED}Deployment script not found: $deploy_script${NC}"
+        exit 1
+    fi
+    
+    # Ensure executable
+    chmod +x "$deploy_script"
+    
+    # Run deployment
+    if ! "$deploy_script"; then
+        echo -e "${RED}Deployment script failed.${NC}"
+        exit 1
+    fi
+
+    # If this was the first run (api_url was empty), we need to rebuild web with new URL and redeploy
+    if [ -z "$api_url" ]; then
+        echo -e "${YELLOW}Initial deployment complete. Fetching new API URL for frontend reconfiguration...${NC}"
+        local new_api_url=$(cd "$SCRIPT_DIR/terraform" && terraform output -raw bantora_api_url 2> /dev/null)
+        
+        if [ -n "$new_api_url" ]; then
+             new_api_url="${new_api_url}/api"
+             echo -e "${GREEN}New API URL detected: $new_api_url${NC}"
+             echo -e "${BLUE}Rebuilding Flutter Web with correct API URL...${NC}"
+             
+             if build_flutter_web "$new_api_url"; then
+                 echo -e "${BLUE}Redeploying Frontend service...${NC}"
+                 # We only need to rebuild the Docker image for web and update the Cloud Run service.
+                 # Calling setupGCP.sh again is the easiest way to ensure consistency, 
+                 # though it re-runs terraform apply which is idempotent.
+                 echo -e "${BLUE}Running deployment update...${NC}"
+                 "$deploy_script"
+             fi
+        else
+             echo -e "${RED}Failed to retrieve API URL after deployment. Frontend may not work.${NC}"
+        fi
+    fi
+}
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -1409,6 +1511,16 @@ while [ $# -gt 0 ]; do
                 exit 1
             fi
             exit 0
+            ;;
+        --deploy)
+            deploy
+            exit $?
+            ;;
+        --build-web)
+            shift
+            api_url="$1"
+            build_flutter_web "$api_url"
+            exit $?
             ;;
         --exec)
             if [ $# -lt 3 ]; then

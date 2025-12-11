@@ -27,6 +27,31 @@ Bantora is a Pan-African polling, consensus, and civic engagement platform built
 
 This document serves as the definitive technical guide for all Bantora development work. Every implementation task MUST be verified against these specifications before coding begins.
 
+## Deployment Architecture (GCP)
+
+The production environment is hosted on Google Cloud Platform using serverless technologies.
+
+### Infrastructure Components
+- **Compute**: Google Cloud Run (Serverless Containers)
+    - `bantora-api`: Backend service (Java/Spring Boot)
+    - `bantora-web`: Frontend service (Flutter/Nginx)
+- **Database**: Cloud SQL for PostgreSQL (Enterprise Edition)
+- **Caching**: Cloud Memorystore (Redis)
+- **Networking**:
+    - **VPC Network**: Custom VPC for secure internal communication.
+    - **Serverless VPC Access**: Connects Cloud Run to Cloud SQL and Redis.
+- **Registry**: Artifact Registry (Docker images).
+
+### Automation
+- **Terraform**: Manages all infrastructure as code (`terraform/`).
+- **Scripts**: `ops/scripts/setupGCP.sh` handles the build and deploy pipeline.
+- **Integration**: `bantora-docker.sh --deploy` provides a unified entry point.
+
+### Production Endpoints
+- **API Service**: https://bantora-api-a2y2msttda-bq.a.run.app
+- **Web Frontend**: https://bantora-web-a2y2msttda-bq.a.run.app
+- **Health Check**: https://bantora-api-a2y2msttda-bq.a.run.app/actuator/health
+
 ## Microservices Architecture
 
 The platform is structured into multiple services following microservices best practices:

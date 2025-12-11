@@ -57,3 +57,9 @@ test-results/
 postgres-data/
 redis-data/
 Question5
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl

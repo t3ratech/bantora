@@ -183,8 +183,46 @@ The **AI Service** is the engine that turns noise into signal.
 
 ---
 
-## 🐳 Docker Deployment
+## 🚀 Deployment
 
+### Google Cloud Platform (GCP)
+
+Bantora Deployment is fully automated using Terraform and `bantora-docker.sh`.
+
+#### Prerequisites
+1. **Google Cloud SDK**: Install `gcloud` CLI.
+2. **Terraform**: Install Terraform (>= 1.0).
+3. **GCP Project**: A GCP project with billing enabled.
+4. **Credentials**:
+   - Create `~/gcp/credentials_bantora` file:
+     ```bash
+     export GCP_PROJECT_ID="your-project-id"
+     export GCP_REGION="us-central1"
+     export DB_PASSWORD="secure-password"
+     export JWT_SECRET="secure-jwt-secret"
+     export GEMINI_API_KEY="your-gemini-api-key"
+     ```
+   - Authenticate: `gcloud auth login` and `gcloud auth application-default login`.
+
+#### Deploy
+Run the following command to build and deploy all services:
+```bash
+./bantora-docker.sh --deploy
+```
+
+This will:
+1. Initialize Terraform.
+2. Create/Update Infrastructure (Cloud Run, Cloud SQL, Redis).
+3. Build and push Docker images to Artifact Registry.
+4. Deploy services to Cloud Run.
+
+#### Production URLs
+After successful deployment, the services are available at:
+- **API Service**: https://bantora-api-a2y2msttda-bq.a.run.app
+- **Web Frontend**: https://bantora-web-a2y2msttda-bq.a.run.app
+
+### Local Development
+See **Quick Start** section above.
 ### Container Info
 - **Image**: bantora-web:latest
 - **Base**: nginx:alpine

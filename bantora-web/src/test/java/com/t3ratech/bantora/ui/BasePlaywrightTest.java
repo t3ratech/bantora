@@ -8,7 +8,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.nio.file.Paths;
-import java.util.Arrays;
 
 @SpringBootTest(classes = PlaywrightTestConfig.class)
 @ActiveProfiles("test")
@@ -20,42 +19,55 @@ public abstract class BasePlaywrightTest {
     protected BrowserContext context;
     protected Page page;
 
-    @Value("${bantora.web.port}")
-    protected int port;
-
     @BeforeAll
     static void launchBrowser() {
         playwright = Playwright.create();
-        browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
-                .setHeadless(false)
-                .setArgs(Arrays.asList("--no-sandbox", "--disable-setuid-sandbox")));
+        browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
     }
 
     @AfterAll
     static void closeBrowser() {
-        if (browser != null) {
+        if (browser != null)
             browser.close();
-        }
-        if (playwright != null) {
+        if (playwright != null)
             playwright.close();
-        }
     }
 
     @BeforeEach
-    void createContextAndPage() {
-        context = browser.newContext(new Browser.NewContextOptions().setViewportSize(1280, 720));
+    void createContext() {
+        context = browser.newContext();
         page = context.newPage();
     }
 
     @AfterEach
     void closeContext() {
-        if (context != null) {
+        if (context != null)
             context.close();
-        }
     }
 
+    @Value("${bantora.web.base-url}")
+    protected String baseUrl;
+
+    @Value("${bantora.web.port}")
+    protected int port;
+
     protected void navigateToHome() {
-        page.navigate("http://localhost:" + port);
+        // If baseUrl contains http/https, use it. If it's just a host, append protocol.
+        // If it ends with slash, remove it.
+        String url = baseUrl;
+        if (!url.startsWith("http")) {
+            url = "http://" + url;
+        }
+        if (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+
+        // Only append port if baseUrl is localhost and port is missing
+        if (url.contains("localhost") && !url.contains(":" + port)) {
+            page.navigate(url + ":" + port);
+        } else {
+            page.navigate(url);
+        }
     }
 
     protected void takeScreenshot(String name) {
