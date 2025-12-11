@@ -3,6 +3,7 @@ class Poll {
   final String title;
   final String description;
   final String creatorPhone;
+  final String? category;
   final String scope;
   final String? region;
   final String? countryCode;
@@ -17,6 +18,7 @@ class Poll {
     required this.title,
     required this.description,
     required this.creatorPhone,
+    this.category,
     required this.scope,
     this.region,
     this.countryCode,
@@ -35,6 +37,7 @@ class Poll {
       title: json['title'],
       description: json['description'],
       creatorPhone: json['creatorPhone'],
+      category: json['category'],
       scope: json['scope'],
       region: json['region'],
       countryCode: json['countryCode'],
