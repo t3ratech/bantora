@@ -15,9 +15,9 @@ public interface BantoraPollRepository extends R2dbcRepository<BantoraPoll, UUID
     Flux<BantoraPoll> findByStatus(BantoraPollStatus status);
     Flux<BantoraPoll> findByCreatorPhone(String creatorPhone);
     
-    @Query("SELECT * FROM bantora_polls WHERE status = 'ACTIVE' AND end_time > :now ORDER BY total_votes DESC")
+    @Query("SELECT * FROM bantora_poll WHERE status = 'ACTIVE' AND end_time > :now ORDER BY total_votes DESC")
     Flux<BantoraPoll> findActiveOrderByVotesDesc(LocalDateTime now);
     
-    @Query("SELECT * FROM bantora_polls WHERE status = 'ACTIVE' AND end_time > :now ORDER BY created_at DESC")
+    @Query("SELECT * FROM bantora_poll WHERE status = 'ACTIVE' AND end_time > :now ORDER BY created_at DESC")
     Flux<BantoraPoll> findActiveOrderByCreatedDesc(LocalDateTime now);
 }

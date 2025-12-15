@@ -19,17 +19,17 @@ import java.util.UUID;
 
 @Entity
 @Table(
-    name = "refresh_tokens",
+    name = "bantora_refresh_token",
     indexes = {
-        @Index(name = "idx_refresh_token", columnList = "token", unique = true),
-        @Index(name = "idx_refresh_user", columnList = "user_phone")
+        @Index(name = "idx_bantora_refresh_token", columnList = "token", unique = true),
+        @Index(name = "idx_bantora_refresh_user", columnList = "user_phone")
     }
 )
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RefreshToken {
+public class BantoraRefreshToken {
     
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

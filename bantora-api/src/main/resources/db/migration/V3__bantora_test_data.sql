@@ -2,12 +2,12 @@
 -- Flyway data migration for R2DBC
 
 -- Test user
-INSERT INTO bantora_users (phone_number, password_hash, full_name, country_code, verified, enabled, preferred_language, created_at, updated_at)
+INSERT INTO bantora_user (phone_number, password_hash, full_name, country_code, verified, enabled, preferred_language, created_at, updated_at)
 VALUES ('+263785107830', '$argon2id$v=19$m=16384,t=2,p=1$1EuEeVyVcNttvsudvsmB3g$rpDHS4jfdVa5FE9h3IgJKbv6xbpe/tpxAegLg3DdtrI', 'Tsungai Kaviya', 'ZW', true, true, 'en', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (phone_number) DO NOTHING;
 
 -- Popular Poll 1
-INSERT INTO bantora_polls (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
+INSERT INTO bantora_poll (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440001',
     'Should Africa establish a unified currency?',
@@ -23,14 +23,14 @@ VALUES (
     'Economy'
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO bantora_poll_options (id, poll_id, option_text, option_order, votes_count)
+INSERT INTO bantora_poll_option (id, poll_id, option_text, option_order, votes_count)
 VALUES 
-    ('5500-opt1-0000-0000-000000000001', '550e8400-e29b-41d4-a716-446655440001', 'Yes', 1, 14341),
-    ('5500-opt2-0000-0000-000000000001', '550e8400-e29b-41d4-a716-446655440001', 'No', 2, 1079)
+    ('550e8400-0001-0000-0000-000000000001', '550e8400-e29b-41d4-a716-446655440001', 'Yes', 1, 14341),
+    ('550e8400-0002-0000-0000-000000000001', '550e8400-e29b-41d4-a716-446655440001', 'No', 2, 1079)
 ON CONFLICT (id) DO NOTHING;
 
 -- Popular Poll 2
-INSERT INTO bantora_polls (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
+INSERT INTO bantora_poll (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440002',
     'Expand African Continental Free Trade Area (AfCFTA)?',
@@ -46,14 +46,14 @@ VALUES (
     'Trade'
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO bantora_poll_options (id, poll_id, option_text, option_order, votes_count)
+INSERT INTO bantora_poll_option (id, poll_id, option_text, option_order, votes_count)
 VALUES 
-    ('5500-opt1-0000-0000-000000000002', '550e8400-e29b-41d4-a716-446655440002', 'Yes', 1, 10666),
-    ('5500-opt2-0000-0000-000000000002', '550e8400-e29b-41d4-a716-446655440002', 'No', 2, 2184)
+    ('550e8400-0001-0000-0000-000000000002', '550e8400-e29b-41d4-a716-446655440002', 'Yes', 1, 10666),
+    ('550e8400-0002-0000-0000-000000000002', '550e8400-e29b-41d4-a716-446655440002', 'No', 2, 2184)
 ON CONFLICT (id) DO NOTHING;
 
 -- Popular Poll 3
-INSERT INTO bantora_polls (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
+INSERT INTO bantora_poll (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440003',
     'Implement a unified African passport for all citizens?',
@@ -69,14 +69,14 @@ VALUES (
     'Identity'
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO bantora_poll_options (id, poll_id, option_text, option_order, votes_count)
+INSERT INTO bantora_poll_option (id, poll_id, option_text, option_order, votes_count)
 VALUES 
-    ('5500-opt1-0000-0000-000000000003', '550e8400-e29b-41d4-a716-446655440003', 'Yes', 1, 8092),
-    ('5500-opt2-0000-0000-000000000003', '550e8400-e29b-41d4-a716-446655440003', 'No', 2, 2843)
+    ('550e8400-0001-0000-0000-000000000003', '550e8400-e29b-41d4-a716-446655440003', 'Yes', 1, 8092),
+    ('550e8400-0002-0000-0000-000000000003', '550e8400-e29b-41d4-a716-446655440003', 'No', 2, 2843)
 ON CONFLICT (id) DO NOTHING;
 
 -- New/AI Poll 1
-INSERT INTO bantora_polls (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
+INSERT INTO bantora_poll (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440004',
     'Prioritize solar and wind energy for Africa''s power grid?',
@@ -92,14 +92,14 @@ VALUES (
     'Energy'
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO bantora_poll_options (id, poll_id, option_text, option_order, votes_count)
+INSERT INTO bantora_poll_option (id, poll_id, option_text, option_order, votes_count)
 VALUES 
-    ('5500-opt1-0000-0000-000000000004', '550e8400-e29b-41d4-a716-446655440004', 'Yes', 1, 326),
-    ('5500-opt2-0000-0000-000000000004', '550e8400-e29b-41d4-a716-446655440004', 'No', 2, 161)
+    ('550e8400-0001-0000-0000-000000000004', '550e8400-e29b-41d4-a716-446655440004', 'Yes', 1, 326),
+    ('550e8400-0002-0000-0000-000000000004', '550e8400-e29b-41d4-a716-446655440004', 'No', 2, 161)
 ON CONFLICT (id) DO NOTHING;
 
 -- New/AI Poll 2
-INSERT INTO bantora_polls (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
+INSERT INTO bantora_poll (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440005',
     'Launch a pan-African online education platform?',
@@ -115,14 +115,14 @@ VALUES (
     'Education'
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO bantora_poll_options (id, poll_id, option_text, option_order, votes_count)
+INSERT INTO bantora_poll_option (id, poll_id, option_text, option_order, votes_count)
 VALUES 
-    ('5500-opt1-0000-0000-000000000005', '550e8400-e29b-41d4-a716-446655440005', 'Yes', 1, 275),
-    ('5500-opt2-0000-0000-000000000005', '550e8400-e29b-41d4-a716-446655440005', 'No', 2, 37)
+    ('550e8400-0001-0000-0000-000000000005', '550e8400-e29b-41d4-a716-446655440005', 'Yes', 1, 275),
+    ('550e8400-0002-0000-0000-000000000005', '550e8400-e29b-41d4-a716-446655440005', 'No', 2, 37)
 ON CONFLICT (id) DO NOTHING;
 
 -- New/AI Poll 3
-INSERT INTO bantora_polls (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
+INSERT INTO bantora_poll (id, title, description, creator_phone, scope, status, start_time, end_time, total_votes, created_at, updated_at, category)
 VALUES (
     '550e8400-e29b-41d4-a716-446655440006',
     'Create a continental youth employment program?',
@@ -138,14 +138,14 @@ VALUES (
     'Employment'
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO bantora_poll_options (id, poll_id, option_text, option_order, votes_count)
+INSERT INTO bantora_poll_option (id, poll_id, option_text, option_order, votes_count)
 VALUES 
-    ('5500-opt1-0000-0000-000000000006', '550e8400-e29b-41d4-a716-446655440006', 'Yes', 1, 111),
-    ('5500-opt2-0000-0000-000000000006', '550e8400-e29b-41d4-a716-446655440006', 'No', 2, 45)
+    ('550e8400-0001-0000-0000-000000000006', '550e8400-e29b-41d4-a716-446655440006', 'Yes', 1, 111),
+    ('550e8400-0002-0000-0000-000000000006', '550e8400-e29b-41d4-a716-446655440006', 'No', 2, 45)
 ON CONFLICT (id) DO NOTHING;
 
 -- Raw Ideas
-INSERT INTO bantora_ideas (id, user_phone, content, status, created_at, upvotes)
+INSERT INTO bantora_idea (id, user_phone, content, status, created_at, upvotes)
 VALUES (
     '660e8400-e29b-41d4-a716-446655440001',
     '+263785107830',
@@ -155,7 +155,7 @@ VALUES (
     23
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO bantora_ideas (id, user_phone, content, status, created_at, upvotes)
+INSERT INTO bantora_idea (id, user_phone, content, status, created_at, upvotes)
 VALUES (
     '660e8400-e29b-41d4-a716-446655440002',
     '+263785107830',
@@ -165,7 +165,7 @@ VALUES (
     18
 ) ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO bantora_ideas (id, user_phone, content, status, created_at, upvotes)
+INSERT INTO bantora_idea (id, user_phone, content, status, created_at, upvotes)
 VALUES (
     '660e8400-e29b-41d4-a716-446655440003',
     '+263785107830',

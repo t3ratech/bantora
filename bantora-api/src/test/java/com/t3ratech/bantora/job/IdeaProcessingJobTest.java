@@ -9,7 +9,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.t3ratech.bantora.persistence.entity.Idea;
+import com.t3ratech.bantora.persistence.entity.BantoraIdea;
 import com.t3ratech.bantora.persistence.repository.IdeaRepository;
 import com.t3ratech.bantora.service.AiService;
 
@@ -30,10 +30,10 @@ class IdeaProcessingJobTest {
 
     @Test
     void processPendingIdeas_ShouldProcessAllPendingIdeas() {
-        Idea idea1 = Idea.builder().id(java.util.UUID.randomUUID()).status(Idea.IdeaStatus.PENDING).build();
-        Idea idea2 = Idea.builder().id(java.util.UUID.randomUUID()).status(Idea.IdeaStatus.PENDING).build();
+        BantoraIdea idea1 = BantoraIdea.builder().id(java.util.UUID.randomUUID()).status(BantoraIdea.IdeaStatus.PENDING).build();
+        BantoraIdea idea2 = BantoraIdea.builder().id(java.util.UUID.randomUUID()).status(BantoraIdea.IdeaStatus.PENDING).build();
 
-        when(ideaRepository.findByStatus(Idea.IdeaStatus.PENDING)).thenReturn(Flux.just(idea1, idea2));
+        when(ideaRepository.findByStatus(BantoraIdea.IdeaStatus.PENDING)).thenReturn(Flux.just(idea1, idea2));
         when(aiService.processIdea(idea1)).thenReturn(Mono.empty());
         when(aiService.processIdea(idea2)).thenReturn(Mono.empty());
 
@@ -45,7 +45,7 @@ class IdeaProcessingJobTest {
 
         ideaProcessingJob.onStartup();
 
-        verify(ideaRepository).findByStatus(Idea.IdeaStatus.PENDING);
+        verify(ideaRepository).findByStatus(BantoraIdea.IdeaStatus.PENDING);
         verify(aiService).processIdea(idea1);
         verify(aiService).processIdea(idea2);
     }

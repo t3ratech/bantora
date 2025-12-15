@@ -44,6 +44,12 @@ test {
     }
 }
 
+tasks.register('installPlaywrightChromium', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.microsoft.playwright.CLI'
+    args 'install', 'chromium'
+}
+
 bootJar {
     enabled = false
 }

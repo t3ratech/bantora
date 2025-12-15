@@ -10,7 +10,7 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import java.util.UUID;
 
-@Table("bantora_poll_options")
+@Table("bantora_poll_option")
 @Data
 @Builder
 @NoArgsConstructor

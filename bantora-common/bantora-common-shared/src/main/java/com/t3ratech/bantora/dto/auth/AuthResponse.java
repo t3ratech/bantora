@@ -27,16 +27,16 @@ public class AuthResponse {
     @Builder.Default
     private String tokenType = "Bearer";
     private UserInfo user;
-}
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-class UserInfo {
-    private String phoneNumber;
-    private String fullName;
-    private String countryCode;
-    private Set<String> roles;
-    private String preferredLanguage;
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UserInfo {
+        private String phoneNumber;
+        private String fullName;
+        private String countryCode;
+        private Set<String> roles;
+        private String preferredLanguage;
+    }
 }

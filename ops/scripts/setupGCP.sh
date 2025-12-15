@@ -6,15 +6,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # Source credentials
-if [ -f ~/gcp/credentials_bantora ]; then
-    source ~/gcp/credentials_bantora
+if [ -f ~/.gcp/credentials_bantora ]; then
+    source ~/.gcp/credentials_bantora
 else
-    echo "Error: ~/gcp/credentials_bantora file not found!"
+    echo "Error: ~/.gcp/credentials_bantora file not found!"
     exit 1
 fi
 
 if [ -z "$GEMINI_API_KEY" ]; then
-    echo "Error: GEMINI_API_KEY is not set in ~/gcp/credentials_bantora"
+    echo "Error: GEMINI_API_KEY is not set in ~/.gcp/credentials_bantora"
     exit 1
 fi
 

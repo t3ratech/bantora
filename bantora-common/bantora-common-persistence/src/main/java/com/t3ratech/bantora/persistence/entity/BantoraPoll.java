@@ -20,13 +20,13 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@jakarta.persistence.Table(name = "polls")
-@org.springframework.data.relational.core.mapping.Table("polls")
+@jakarta.persistence.Table(name = "bantora_poll")
+@org.springframework.data.relational.core.mapping.Table("bantora_poll")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Poll {
+public class BantoraPoll {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -42,12 +42,10 @@ public class Poll {
     @Column(name = "creator_phone", nullable = false, length = 20)
     private String creatorPhone;
 
-    @Column(name = "idea_id")
-    private UUID ideaId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "scope", nullable = false, length = 20)
-    private PollScope scope;
+    private BantoraPollScope scope;
 
     @Column(name = "region", length = 50)
     private String region;
@@ -58,7 +56,7 @@ public class Poll {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     @Builder.Default
-    private PollStatus status = PollStatus.PENDING;
+    private BantoraPollStatus status = BantoraPollStatus.PENDING;
 
     @Column(name = "start_time", nullable = false)
     private Instant startTime;
@@ -79,8 +77,9 @@ public class Poll {
     private Instant updatedAt = Instant.now();
 
     @OneToMany(mappedBy = "poll", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @org.springframework.data.annotation.Transient
     @Builder.Default
-    private List<PollOption> options = new ArrayList<>();
+    private List<BantoraPollOption> options = new ArrayList<>();
 
     @PreUpdate
     public void preUpdate() {

@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@Table("bantora_polls")
+@Table("bantora_poll")
 @Data
 @Builder
 @NoArgsConstructor

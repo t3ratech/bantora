@@ -113,6 +113,19 @@ public class JwtUtil {
             return Set.of();
         }
     }
+
+    public String getTokenType(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return claims.get("type", String.class);
+        } catch (Exception e) {
+            return null;
+        }
+    }
     
     public Instant getExpirationFromToken(String token) {
         try {

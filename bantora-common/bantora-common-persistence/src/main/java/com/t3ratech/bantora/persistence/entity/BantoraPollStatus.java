@@ -8,7 +8,7 @@
 
 package com.t3ratech.bantora.persistence.entity;
 
-public enum PollStatus {
+public enum BantoraPollStatus {
     PENDING,
     APPROVED,
     REJECTED,

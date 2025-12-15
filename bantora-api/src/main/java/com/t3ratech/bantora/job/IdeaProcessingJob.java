@@ -8,7 +8,7 @@
 
 package com.t3ratech.bantora.job;
 
-import com.t3ratech.bantora.persistence.entity.Idea;
+import com.t3ratech.bantora.persistence.entity.BantoraIdea;
 import com.t3ratech.bantora.persistence.repository.IdeaRepository;
 import com.t3ratech.bantora.service.AiService;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +42,7 @@ public class IdeaProcessingJob {
     }
 
     private Flux<Void> processPendingIdeas() {
-        return ideaRepository.findByStatus(Idea.IdeaStatus.PENDING)
+        return ideaRepository.findByStatus(BantoraIdea.IdeaStatus.PENDING)
                 .flatMap(idea -> {
                     log.info("Processing idea: {}", idea.getId());
                     return aiService.processIdea(idea)

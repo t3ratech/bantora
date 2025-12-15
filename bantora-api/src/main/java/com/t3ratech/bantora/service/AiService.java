@@ -10,10 +10,10 @@ package com.t3ratech.bantora.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.t3ratech.bantora.persistence.entity.Idea;
-import com.t3ratech.bantora.persistence.entity.Poll;
-import com.t3ratech.bantora.persistence.entity.PollScope;
-import com.t3ratech.bantora.persistence.entity.PollStatus;
+import com.t3ratech.bantora.persistence.entity.BantoraIdea;
+import com.t3ratech.bantora.persistence.entity.BantoraPoll;
+import com.t3ratech.bantora.persistence.entity.BantoraPollScope;
+import com.t3ratech.bantora.persistence.entity.BantoraPollStatus;
 import com.t3ratech.bantora.persistence.repository.IdeaRepository;
 import com.t3ratech.bantora.persistence.repository.PollRepository;
 import lombok.RequiredArgsConstructor;
@@ -42,15 +42,29 @@ public class AiService {
     @Value("${bantora.ai.gemini.url}")
     private String geminiUrl;
 
-    public Mono<Void> processIdea(Idea idea) {
+    public Mono<Void> processIdea(BantoraIdea idea) {
+        // Skip if already processed
+        if (idea.getStatus() == BantoraIdea.IdeaStatus.PROCESSED) {
+            log.info("Idea {} already processed, skipping", idea.getId());
+            return Mono.empty();
+        }
+        
         return summarizeIdea(idea.getContent())
                 .flatMap(summary -> createPollFromSummary(idea, summary))
                 .flatMap(poll -> {
-                    idea.setStatus(Idea.IdeaStatus.PROCESSED);
+                    idea.setStatus(BantoraIdea.IdeaStatus.PROCESSED);
                     idea.setProcessedAt(Instant.now());
-                    return ideaRepository.save(idea);
+                    return ideaRepository.save(idea)
+                            .onErrorResume(e -> {
+                                log.error("Error saving processed idea {}: {}", idea.getId(), e.getMessage());
+                                return Mono.empty();
+                            });
                 })
-                .then();
+                .then()
+                .onErrorResume(e -> {
+                    log.error("Error processing idea {}: {}", idea.getId(), e.getMessage());
+                    return Mono.empty();
+                });
     }
 
     private Mono<String> summarizeIdea(String content) {
@@ -95,19 +109,18 @@ public class AiService {
         }
     }
 
-    private Mono<Poll> createPollFromSummary(Idea idea, String summaryJson) {
+    private Mono<BantoraPoll> createPollFromSummary(BantoraIdea idea, String summaryJson) {
         try {
             JsonNode node = objectMapper.readTree(summaryJson);
             String title = node.path("title").asText("Untitled Poll");
             String description = node.path("description").asText("No description available.");
 
-            Poll poll = Poll.builder()
+            BantoraPoll poll = BantoraPoll.builder()
                     .title(title)
                     .description(description)
                     .creatorPhone(idea.getUserPhone())
-                    .ideaId(idea.getId())
-                    .scope(PollScope.NATIONAL) // Default scope, AI could determine this too
-                    .status(PollStatus.ACTIVE) // Auto-activate for now
+                    .scope(BantoraPollScope.NATIONAL) // Default scope, AI could determine this too
+                    .status(BantoraPollStatus.ACTIVE) // Auto-activate for now
                     .startTime(Instant.now())
                     .endTime(Instant.now().plus(7, ChronoUnit.DAYS))
                     .build();

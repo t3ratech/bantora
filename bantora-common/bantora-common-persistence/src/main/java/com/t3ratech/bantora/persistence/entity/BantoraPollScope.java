@@ -8,9 +8,11 @@
 
 package com.t3ratech.bantora.persistence.entity;
 
-public enum UserRole {
-    USER,
-    MODERATOR,
-    ADMIN,
-    SUPERADMIN
+public enum BantoraPollScope {
+    NATIONAL,
+    SADC,
+    ECOWAS,
+    EAC,
+    AU,
+    CONTINENTAL
 }

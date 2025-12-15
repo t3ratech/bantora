@@ -8,7 +8,7 @@ Open-Source • AI-Driven • Built for 1.4 Billion Africans
 
 ## 🌍 Overview
 
-**BANTORA** is a Pan-African digital platform designed to give Africans a unified voice on political, economic, cultural, and developmental issues. It enables users across all 55 African nations to vote, create polls, express opinions, and shape the continent’s future—independently from political actors.
+**BANTORA** is a Pan-African digital platform designed to give Africans a unified voice on political, economic, cultural, and developmental issues. It enables users across all 55 African nations to vote on polls, submit ideas, express opinions, and shape the continent’s future—independently from political actors.
 
 The long-term vision is a secure, scalable system capable of hosting continental-level polls and eventually validating AU-recognized digital elections.
 
@@ -48,35 +48,31 @@ The **AI Service** is the engine that turns noise into signal.
 
 *   **Summarization**: Uses **Gemini API** to read user ideas and return a concise, neutral summary.
 *   **Linkage**: Clicking on an AI-generated summary takes the user back to the original raw idea for full context.
-*   **Poll Generation**: Automatically creates voting options based on the idea's content.
+*   **Poll Generation**: AI-assisted poll creation is scaffolded (see `AiService`) and currently creates poll records (title/description). It does not yet generate poll options end-to-end. If the Gemini call fails, the poll may be created with a generic error title/description.
 *   **Scheduling**: AI processing runs once a day or when the system is restarted to process new batch of ideas.
 
-*Note: Users can only vote ONCE per poll/idea. To ensure this, login via phone number is mandatory.*
+Note: Users can only vote once per poll. Login via phone number is mandatory for all write actions (vote, submit idea, upvote).
 
 ---
 
 ## 🧱 Tech Stack
 
-### **Frontend**
+### Frontend
 
-* Flutter (mobile + web)
-* Kotlin (Android native optional module)
+- Flutter Web (Dart)
+- Served via Nginx container (`bantora-web`)
 
-### **Backend**
+### Backend
 
-* Spring Boot 3.5.0 with WebFlux (Reactive, Pure Java)
-* **JDK 25** (OpenJDK) - Strictly enforced
-* **Gradle 9.2.1** (supports JDK 25)
-* **Lombok edge-SNAPSHOT** (JDK 25 compatible)
-* PostgreSQL 16 + Hibernate + R2DBC (Reactive)
-* Redis 7.4 (Cache & Rate Limiting)
-* RESTful Reactive API
-* Swagger/OpenAPI 3.0 documentation
-* JWT authentication with RS256 (Argon2id hashing – quantum-safe)
-* Role-Based Access Control (RBAC)
-* Phone number as unique identifier (E.164 format)
+- Spring Boot 3.5.0 (WebFlux)
+- JDK 25 (enforced via Gradle toolchain)
+- Gradle wrapper 9.2.1
+- PostgreSQL 16
+- Redis 7
+- JWT access + refresh tokens (HMAC secret)
+- Argon2id password hashing
 
-### **Infrastructure**
+### Infrastructure
 
 * Docker
 * Linux
@@ -121,6 +117,15 @@ The **AI Service** is the engine that turns noise into signal.
     *   **Raw Feed** (Right Column).
 *   **Drill-down**: Click summaries to see original user posts.
 
+### Registration Requirements
+
+- Registration requires selecting an African country (African countries only).
+- The selected country determines:
+  - The phone calling-code prefix shown next to the phone number input
+  - A country flag indicator displayed in the phone input
+  - The default preferred language and currency used during registration
+- Preferred language is persisted to the user profile.
+
 ### 🧠 **AI Features**
 
 * Ideas → AI → Poll creation
@@ -137,49 +142,13 @@ The **AI Service** is the engine that turns noise into signal.
 
 ---
 
-## ✅ Implemented Features
+## Implemented
 
-### 1. **Home Screen - Poll Feed**
-- Display all available polls in a card-based layout
-- Filter polls by status (All, Active, Pending, Completed)
-- Real-time poll statistics (votes count, options count)
-- Pull-to-refresh functionality
-- Status indicators with color coding:
-  - 🟢 **Active** - Green
-  - 🟠 **Pending** - Orange
-  - 🔵 **Completed** - Blue
-- Timestamps showing "5h ago", "2d ago", etc.
-- Empty state UI when no polls exist
-
-### 2. **Create Poll Screen**
-- **Form Fields**:
-  - Poll Title (minimum 10 characters)
-  - Description (minimum 20 characters)
-  - Scope selector with options: National, SADC, ECOWAS, EAC, AU, Continental
-- **Dynamic Poll Options**:
-  - Minimum 2 options required, Maximum 10 options allowed
-  - Add/remove options dynamically
-- Real-time form validation
-- Loading state during submission
-- Success/error notifications
-
-### 3. **Poll Detail & Voting Screen**
-- **Poll Information Display**: Title, description, total votes, scope, creation timestamp, status.
-- **Voting Interface**:
-  - Radio button selection for options
-  - Vote submission with loading state
-  - Confirmation feedback
-- **Results Visualization**:
-  - Horizontal progress bars for each option
-  - Percentage calculations and vote counts
-  - Color-coded results (purple theme)
-  - Automatically shown after voting or for completed polls
-
-### 4. **API Integration**
-- Full REST API client implementation
-- Endpoints integrated: `GET /api/polls`, `GET /api/polls/:id`, `POST /api/polls`, `POST /api/votes`
-- Error handling and fallback states
-- Configurable API base URL (default: http://localhost:8081)
+- Login + registration UI and backend endpoints
+- Authenticated-only vote, idea submission, and idea upvote
+- Search filtering across polls + ideas
+- Theme (light/dark) with persistence
+- Playwright UI tests (Java) with screenshot capture for manual review
 
 ---
 
@@ -194,15 +163,16 @@ Bantora Deployment is fully automated using Terraform and `bantora-docker.sh`.
 2. **Terraform**: Install Terraform (>= 1.0).
 3. **GCP Project**: A GCP project with billing enabled.
 4. **Credentials**:
-   - Create `~/gcp/credentials_bantora` file:
-     ```bash
-     export GCP_PROJECT_ID="your-project-id"
-     export GCP_REGION="us-central1"
-     export DB_PASSWORD="secure-password"
-     export JWT_SECRET="secure-jwt-secret"
-     export GEMINI_API_KEY="your-gemini-api-key"
-     ```
-   - Authenticate: `gcloud auth login` and `gcloud auth application-default login`.
+  - Ensure the required environment variables for deployment are set locally (do not commit secrets):
+    - Create `~/.gcp/credentials_bantora` file:
+      ```bash
+      export GCP_PROJECT_ID="your-project-id"
+      export GCP_REGION="us-central1"
+      export DB_PASSWORD="secure-password"
+      export JWT_SECRET="secure-jwt-secret"
+      export GEMINI_API_KEY="your-gemini-api-key"
+      ```
+  - Authenticate: `gcloud auth login` and `gcloud auth application-default login`.
 
 #### Deploy
 Run the following command to build and deploy all services:
@@ -222,34 +192,7 @@ After successful deployment, the services are available at:
 - **Web Frontend**: https://bantora-web-a2y2msttda-bq.a.run.app
 
 ### Local Development
-See **Quick Start** section above.
-### Container Info
-- **Image**: bantora-web:latest
-- **Base**: nginx:alpine
-- **Port**: 3080
-- **Health Check**: /health endpoint (returns "OK")
-
-### Build Commands
-```bash
-# Flutter build
-cd bantora-web/bantora_app
-flutter build web --release
-
-# Docker build
-cd ..
-docker build -t bantora-web:latest .
-
-# Run container
-docker run -d --name bantora-web-app -p 3080:3080 bantora-web:latest
-```
-
-## 🚀 Running Services
-
-Currently active:
-- ✅ **Web App**: http://localhost:3080 (bantora-web-app)
-- ✅ **Database**: PostgreSQL 16 on port 5433
-- ✅ **Redis**: Redis 7 on port 6380
-- ⚠️ **API**: bantora-api (needs entityManagerFactory configuration)
+Use `bantora-docker.sh` for container lifecycle and testing.
 
 ---
 
@@ -336,55 +279,74 @@ bantora/
 ## 🚀 Quick Start
 
 ### Prerequisites
-- **JDK 25** (OpenJDK) - MANDATORY
-- **Docker** and **Docker Compose**
-- **Gradle 9.2.1** (wrapper included - supports JDK 25)
-- **Flutter 3.27.1** (for web/mobile development)
+- JDK 25
+- Docker and Docker Compose
+- Gradle 9.2.1
+- Flutter (for building `bantora-web` assets)
 
 ### Setup & Run
 
-1. **Clone the repository**
+1. Clone the repository
+
+2. Configure `.env` (non-secret runtime configuration only)
+
+3. Configure `~/.gcp/credentials_bantora` (secrets: JWT, Twilio, Gemini, DB/Redis passwords)
+
+4. Build Flutter web assets (required; `bantora-web` Dockerfile expects `bantora_app/build/web` to exist):
+
 ```bash
-git clone https://github.com/t3ratech/bantora.git
-cd bantora
+./bantora-docker.sh --build-web http://localhost:3083
 ```
 
-2. **Configure environment**
+5. Rebuild and start everything:
+
 ```bash
-# Review and update .env file with your settings
-# At minimum, configure:
-# - Database credentials
-# - JWT secret
-# - SMS provider credentials (Twilio/Africa's Talking)
+./bantora-docker.sh --rebuild-all
 ```
 
-3. **Build and start all services**
+6. Access:
+
+- Web UI: `http://localhost:3080`
+- Gateway: `http://localhost:3083`
+- API (direct): `http://localhost:3081/api`
+- Swagger UI: `http://localhost:3081/swagger-ui.html`
+
+### Common Commands
+
+Build Flutter web assets:
+
 ```bash
-./bantora-docker.sh -rrr bantora-database bantora-redis bantora-api bantora-web bantora-gateway
+./bantora-docker.sh --build-web http://localhost:3083
 ```
 
-4. **Check service status**
+Rebuild all services:
+
+```bash
+./bantora-docker.sh --rebuild-all
+```
+
+Check service status:
+
 ```bash
 ./bantora-docker.sh --status
 ```
 
-5. **Access the platform**
-- Web UI: http://localhost:3080
-- API: http://localhost:8081/api/v1
-- Swagger UI: http://localhost:8081/swagger-ui.html
-- Gateway: http://localhost:8083
-
-### Development Workflow
+Run all tests:
 
 ```bash
-# Rebuild a specific service
-./bantora-docker.sh -rrr bantora-api
+./bantora-docker.sh --test all
+```
 
-# View logs
+Run Playwright UI tests only:
+
+```bash
+./bantora-docker.sh --test playwright
+```
+
+View logs:
+
+```bash
 ./bantora-docker.sh --logs --tail 200 bantora-api
-
-# Stop all services
-./bantora-docker.sh --cleanup
 ```
 
 ---
@@ -406,9 +368,6 @@ Open-source (MIT or Apache 2.0 recommended)
 
 ## 🟧 Author
 
-Built by **Bantora Community**
-Architect & Maintainer: *[Your Name]*
-
-For collaboration: Open a GitHub issue or PR.
-
----
+Built by **Bantora Community**.
+Architech & Maintainer: **Tsungai Kaviya**
+For collaboration, please join our WhatsApp Channel: https://chat.whatsapp.com/BnlKyxTtLg57nwL7aX92fV

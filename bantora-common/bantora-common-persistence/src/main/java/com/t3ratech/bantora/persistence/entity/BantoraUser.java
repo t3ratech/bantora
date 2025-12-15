@@ -24,7 +24,7 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+public class BantoraUser {
     
     @Id
     @Column(name = "phone_number", length = 20, nullable = false)
@@ -55,7 +55,7 @@ public class User {
     @Column(name = "role")
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private Set<UserRole> roles = new HashSet<>(Set.of(UserRole.USER));
+    private Set<BantoraUserRole> roles = new HashSet<>(Set.of(BantoraUserRole.USER));
     
     @Column(name = "preferred_language", length = 5, nullable = false)
     @Builder.Default

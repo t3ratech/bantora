@@ -1,13 +1,28 @@
 package com.t3ratech.bantora.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.t3ratech.bantora.persistence.entity.BantoraIdea;
+import com.t3ratech.bantora.persistence.entity.BantoraPoll;
 import com.t3ratech.bantora.persistence.repository.IdeaRepository;
 import com.t3ratech.bantora.persistence.repository.PollRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AiServiceTest {
@@ -15,36 +30,67 @@ class AiServiceTest {
     @Mock
     private WebClient.Builder webClientBuilder;
     @Mock
+    private WebClient webClient;
+    @Mock
+    private WebClient.RequestBodyUriSpec requestBodyUriSpec;
+    @Mock
+    private WebClient.RequestBodySpec requestBodySpec;
+    @Mock
+    private WebClient.RequestHeadersSpec requestHeadersSpec;
+    @Mock
+    private WebClient.ResponseSpec responseSpec;
+
+    @Mock
     private IdeaRepository ideaRepository;
     @Mock
     private PollRepository pollRepository;
 
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
+
+    @InjectMocks
     private AiService aiService;
+
+    private BantoraIdea testIdea;
 
     @BeforeEach
     void setUp() {
-        // Mock WebClient.Builder behavior if necessary, or use a MockWebServer
-        // For simplicity in this unit test, we might need to refactor AiService to be
-        // more testable
-        // or mock the WebClient chain.
-        // However, since AiService uses WebClient.create(), it's hard to mock without
-        // changing code.
-        // Assuming we can inject a mock WebClient or similar.
+        ReflectionTestUtils.setField(aiService, "geminiApiKey", "test-key");
+        ReflectionTestUtils.setField(aiService, "geminiUrl", "http://test-url");
 
-        // For now, let's assume we are testing the logic around repository calls
-        // and we might need to mock the `summarizeIdea` method if it was
-        // protected/separate,
-        // but it's private.
-
-        // A better approach for WebClient testing is MockWebServer, but that's an
-        // integration test.
-        // Here we will just verify the flow if we can mock the internal calls.
+        testIdea = new BantoraIdea();
+        testIdea.setId(UUID.randomUUID());
+        testIdea.setContent("Test Idea Content");
+        testIdea.setStatus(BantoraIdea.IdeaStatus.PENDING);
     }
 
     @Test
-    void processIdea_ShouldUpdateStatus_WhenSuccessful() {
-        // This test is a placeholder as mocking WebClient fluent API is verbose.
-        // In a real scenario, we would use MockWebServer.
-        // For now, we will create a basic test structure.
+    void processIdea_shouldSuccessfullyCreatePoll() {
+        // Mock WebClient
+        when(webClientBuilder.build()).thenReturn(webClient);
+        when(webClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
+        when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
+        when(requestBodySpec.bodyValue(anyString())).thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+
+        // Mock Gemini Response
+        String geminiResponse = "{\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"{\\\"title\\\": \\\"AI Generated Poll\\\", \\\"description\\\": \\\"Generated Description\\\"}\"}]}}]}";
+        when(responseSpec.bodyToMono(String.class)).thenReturn(Mono.just(geminiResponse));
+
+        // Mock Repositories
+        when(ideaRepository.save(any(BantoraIdea.class))).thenAnswer(i -> Mono.just(i.getArgument(0)));
+        when(pollRepository.save(any(BantoraPoll.class))).thenAnswer(i -> Mono.just(i.getArgument(0)));
+
+        // Run Test
+        StepVerifier.create(aiService.processIdea(testIdea))
+                .verifyComplete();
+
+        // Verify Interactions
+        verify(ideaRepository).save(argThat(idea -> idea.getStatus() == BantoraIdea.IdeaStatus.PROCESSED &&
+                idea.getProcessedAt() != null));
+
+        verify(pollRepository).save(argThat(poll -> poll.getTitle().equals("AI Generated Poll") &&
+                poll.getDescription().equals("Generated Description")));
     }
 }

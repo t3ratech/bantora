@@ -8,7 +8,7 @@
 
 package com.t3ratech.bantora.persistence.repository;
 
-import com.t3ratech.bantora.persistence.entity.Idea;
+import com.t3ratech.bantora.persistence.entity.BantoraIdea;
 import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
@@ -16,6 +16,6 @@ import reactor.core.publisher.Flux;
 import java.util.UUID;
 
 @Repository
-public interface IdeaRepository extends R2dbcRepository<Idea, UUID> {
-    Flux<Idea> findByStatus(Idea.IdeaStatus status);
+public interface IdeaRepository extends R2dbcRepository<BantoraIdea, UUID> {
+    Flux<BantoraIdea> findByStatus(BantoraIdea.IdeaStatus status);
 }

@@ -22,6 +22,7 @@ NC='\033[0m' # No Color
 # Service definitions - list in dependency order
 declare -a SERVICES=(
     "bantora-database"
+    "bantora-redis"
     "bantora-api"
     "bantora-web"
     "bantora-gateway"
@@ -137,6 +138,7 @@ get_container_name_for_service() {
     local var_name=""
     case "$service" in
         "bantora-database") var_name="DB_CONTAINER_NAME" ;;
+        "bantora-redis") var_name="REDIS_CONTAINER_NAME" ;;
         "bantora-api") var_name="API_CONTAINER_NAME" ;;
         "bantora-web") var_name="WEB_CONTAINER_NAME" ;;
         "bantora-gateway") var_name="GATEWAY_CONTAINER_NAME" ;;
@@ -167,6 +169,124 @@ source_env() {
     fi
 }
 
+# Load secret credentials from ~/.gcp/credentials_bantora
+source_credentials() {
+    local credentials_file="$HOME/.gcp/credentials_bantora"
+
+    if [ -f "$credentials_file" ]; then
+        echo "Loading credentials from $credentials_file..."
+
+        local line
+        local line_no=0
+        while IFS= read -r line || [ -n "$line" ]; do
+            line_no=$((line_no + 1))
+
+            if [[ "$line" =~ ^[[:space:]]*$ ]] || [[ "$line" =~ ^[[:space:]]*# ]]; then
+                continue
+            fi
+
+            if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*= ]]; then
+                continue
+            fi
+
+            echo -e "${RED}Error: Invalid line in credentials file $credentials_file at line $line_no.${NC}"
+            echo -e "${YELLOW}Each non-comment line must be of the form: export NAME=value (or NAME=value).${NC}"
+            echo -e "${YELLOW}This often happens when copying from numbered output (e.g., cat -n). Remove any leading line numbers.${NC}"
+            exit 1
+        done < "$credentials_file"
+
+        set -a
+        # shellcheck disable=SC1090
+        source "$credentials_file"
+        set +a
+        export BANTORA_CREDENTIALS_SOURCE="$credentials_file"
+
+        # Allow a single credentials file to support both deploy (terraform) and runtime (docker-compose)
+        if [ -n "$JWT_SECRET" ] && [ -z "$BANTORA_JWT_SECRET" ]; then
+            export BANTORA_JWT_SECRET="$JWT_SECRET"
+        fi
+        if [ -n "$GEMINI_API_KEY" ] && [ -z "$BANTORA_AI_GEMINI_API_KEY" ]; then
+            export BANTORA_AI_GEMINI_API_KEY="$GEMINI_API_KEY"
+        fi
+
+        # Allow Twilio variables to be provided using conventional names
+        if [ -n "$TWILIO_ACCOUNT_SID" ] && [ -z "$BANTORA_SMS_ACCOUNT_SID" ]; then
+            export BANTORA_SMS_ACCOUNT_SID="$TWILIO_ACCOUNT_SID"
+        fi
+        if [ -n "$TWILIO_AUTH_TOKEN" ] && [ -z "$BANTORA_SMS_AUTH_TOKEN" ]; then
+            export BANTORA_SMS_AUTH_TOKEN="$TWILIO_AUTH_TOKEN"
+        fi
+        if [ -n "$TWILIO_FROM_NUMBER" ] && [ -z "$BANTORA_SMS_FROM_NUMBER" ]; then
+            export BANTORA_SMS_FROM_NUMBER="$TWILIO_FROM_NUMBER"
+        fi
+    else
+        echo -e "${RED}Error: Credentials file $credentials_file not found${NC}"
+        echo -e "${YELLOW}Create it and export required secrets (do not commit secrets).${NC}"
+        exit 1
+    fi
+}
+
+# Fail-fast on missing required secrets
+assert_required_secrets() {
+    local missing=()
+
+    # Runtime secrets consumed by docker-compose.yml / Spring properties
+    local required_vars=(
+        "DB_PASSWORD"
+        "REDIS_PASSWORD"
+        "BANTORA_JWT_SECRET"
+        "BANTORA_AI_GEMINI_API_KEY"
+        "BANTORA_SMS_ACCOUNT_SID"
+        "BANTORA_SMS_AUTH_TOKEN"
+        "BANTORA_SMS_FROM_NUMBER"
+    )
+
+    for v in "${required_vars[@]}"; do
+        if [ -z "${!v}" ]; then
+            missing+=("$v")
+        fi
+    done
+
+    if [ ${#missing[@]} -ne 0 ]; then
+        echo -e "${RED}Error: Missing required secret environment variables: ${missing[*]}${NC}"
+        echo -e "${YELLOW}Set them in $HOME/.gcp/credentials_bantora (sourced by bantora-docker.sh).${NC}"
+        exit 1
+    fi
+
+    local jwt_secret="$BANTORA_JWT_SECRET"
+    if [[ "$jwt_secret" =~ [[:space:]] ]]; then
+        echo -e "${RED}Error: BANTORA_JWT_SECRET must be standard Base64 with no whitespace/control characters.${NC}"
+        echo -e "${YELLOW}Generate a Base64 secret and set it in $HOME/.gcp/credentials_bantora.${NC}"
+        exit 1
+    fi
+
+    if ! [[ "$jwt_secret" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]; then
+        echo -e "${RED}Error: BANTORA_JWT_SECRET must be standard Base64 (A-Z, a-z, 0-9, +, / with optional = padding).${NC}"
+        echo -e "${YELLOW}If you generated a URL-safe Base64 secret (using - and _), regenerate using standard Base64.${NC}"
+        exit 1
+    fi
+
+    if [ $(( ${#jwt_secret} % 4 )) -ne 0 ]; then
+        echo -e "${RED}Error: BANTORA_JWT_SECRET Base64 length must be a multiple of 4.${NC}"
+        echo -e "${YELLOW}Regenerate the secret as standard Base64 and set it in $HOME/.gcp/credentials_bantora.${NC}"
+        exit 1
+    fi
+
+    local padding=0
+    if [[ "$jwt_secret" == *"==" ]]; then
+        padding=2
+    elif [[ "$jwt_secret" == *"=" ]]; then
+        padding=1
+    fi
+
+    local decoded_bytes=$(( (${#jwt_secret} * 3) / 4 - padding ))
+    if [ "$decoded_bytes" -lt 32 ]; then
+        echo -e "${RED}Error: BANTORA_JWT_SECRET is too short. It must decode to at least 32 bytes (256 bits).${NC}"
+        echo -e "${YELLOW}Regenerate a longer Base64 secret and set it in $HOME/.gcp/credentials_bantora.${NC}"
+        exit 1
+    fi
+}
+
 # Load test environment variables
 source_test_env() {
     if [ -f "$SCRIPT_DIR/.env.test" ]; then
@@ -187,6 +307,10 @@ source_test_env() {
         echo -e "${YELLOW}Warning: .env.test file not found, using regular .env for tests${NC}"
         source_env
     fi
+
+    # Secrets must always come from ~/.gcp/credentials_bantora
+    source_credentials
+    assert_required_secrets
 }
 
 # Ensure test environment isolation by managing conflicting containers
@@ -196,6 +320,7 @@ ensure_test_environment_isolation() {
     # List of dev container patterns that conflict with test containers
     local dev_containers=(
         "bantora-database" 
+        "bantora-redis"
         "bantora-api" 
         "bantora-web" 
         "bantora-gateway"
@@ -214,7 +339,7 @@ ensure_test_environment_isolation() {
             conflicts_found=true
         elif [ -n "$dev_container" ]; then
             # Check if dev container is using test ports by examining port mappings
-            local dev_ports=$(docker port "$service" 2>/dev/null | grep -E ":(15432|18091|18080|17083)" || true)
+            local dev_ports=$(docker port "$service" 2>/dev/null | grep -E ":(13432|13091|13080|13083)" || true)
             if [ -n "$dev_ports" ]; then
                 echo -e "${YELLOW}Dev container $service is using test ports: $dev_ports${NC}"
                 conflicts_found=true
@@ -275,6 +400,7 @@ wait_for_service_health() {
     local health_check_var
     case "$service" in
         bantora-database) health_check_var="DB_HEALTH_CMD" ;;
+        bantora-redis) health_check_var="REDIS_HEALTH_CMD" ;;
         bantora-api) health_check_var="API_HEALTH_CMD" ;;
         bantora-web) health_check_var="WEB_HEALTH_CMD" ;;
         bantora-gateway) health_check_var="GATEWAY_HEALTH_CMD" ;;
@@ -306,6 +432,9 @@ wait_for_service_health() {
             "bantora-database")
                 container_name_var="DB_CONTAINER_NAME"
                 ;;
+            "bantora-redis")
+                container_name_var="REDIS_CONTAINER_NAME"
+                ;;
             "bantora-api")
                 container_name_var="API_CONTAINER_NAME"
                 ;;
@@ -326,7 +455,13 @@ wait_for_service_health() {
         fi
         
         # Check health using the health check command
-        if docker exec -i "$container_id" sh -c "$health_check_cmd" >/dev/null 2>&1; then
+        # For Redis, append port if REDIS_INTERNAL_PORT is set and command doesn't already include -p
+        local actual_health_cmd="$health_check_cmd"
+        if [ "$service" = "bantora-redis" ] && [ -n "${REDIS_INTERNAL_PORT}" ] && ! echo "$health_check_cmd" | grep -q "\-p"; then
+            actual_health_cmd="redis-cli -p ${REDIS_INTERNAL_PORT} -a ${REDIS_PASSWORD} ping"
+        fi
+        
+        if docker exec -i "$container_id" sh -c "$actual_health_cmd" >/dev/null 2>&1; then
             echo -e "${GREEN}$service is healthy${NC}"
             return 0
         fi
@@ -384,6 +519,12 @@ build_service() {
         
         if [ $? -ne 0 ]; then
             echo -e "${RED}Failed to build JAR for $service${NC}"
+            return 1
+        fi
+    fi
+
+    if [ "$service" = "bantora-web" ]; then
+        if ! build_flutter_web ""; then
             return 1
         fi
     fi
@@ -452,7 +593,7 @@ get_service_status() {
     local health=$(echo "$container_info" | jq -r '.[0].State.Health.Status // ""' 2>/dev/null || echo "")
     
     # Special case for database which might not have a health check
-    if ([ "$service" = "database" ] || [ "$service" = "bantora-database" ]) && [ "$status" = "running" ]; then
+    if ([ "$service" = "bantora-database" ]) && [ "$status" = "running" ]; then
         if docker exec -i "$container_id" pg_isready -U postgres -d postgres -q 2>/dev/null; then
             health="healthy"
         else
@@ -566,9 +707,13 @@ display_service_info() {
     echo -e "${GREEN}============================================${NC}"
     
     # Load environment variables if not already loaded
-    if [ -z "$DB_USERNAME" ] || [ -z "$DB_PASSWORD" ]; then
+    if [ -z "$DB_USERNAME" ]; then
         source_env
     fi
+
+    # Ensure secrets are available (but never print them)
+    source_credentials
+    assert_required_secrets
     
     # Web Interface
     echo -e "\n${YELLOW}Web Interface:${NC}"
@@ -590,8 +735,15 @@ display_service_info() {
     echo -e "  Port: ${DB_PORT}"
     echo -e "  Name: ${DB_NAME}"
     echo -e "  Username: ${DB_USERNAME}"
-    echo -e "  Password: ${DB_PASSWORD}"
-    echo -e "  Connection URL: postgresql://${DB_USERNAME}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}"
+    echo -e "  Password: (loaded from credentials file; not displayed)"
+    echo -e "  Connection URL: postgresql://${DB_USERNAME}:<password>@localhost:${DB_PORT}/${DB_NAME}"
+    
+    # Redis
+    echo -e "\n${YELLOW}Redis:${NC}"
+    echo -e "  Host: localhost"
+    echo -e "  Port: ${REDIS_PORT}"
+    echo -e "  Password: (loaded from credentials file; not displayed)"
+    echo -e "  Connection URL: redis://localhost:${REDIS_PORT}"
     
     # Mail Interface (Mailpit)
     echo -e "\n${YELLOW}Mail Interface:${NC}"
@@ -600,9 +752,10 @@ display_service_info() {
     
     # JWT Configuration
     echo -e "\n${YELLOW}JWT Configuration:${NC}"
-    echo -e "  Issuer: ${JWT_ISSUER}"
-    echo -e "  Audience: ${JWT_AUDIENCE}"
-    echo -e "  Expiration: ${JWT_EXPIRATION_MS}ms ($((JWT_EXPIRATION_MS/86400000)) days)"
+    echo -e "  Issuer: ${BANTORA_JWT_ISSUER}"
+    echo -e "  Audience: ${BANTORA_JWT_AUDIENCE}"
+    echo -e "  Access Expiration: ${BANTORA_JWT_ACCESS_TOKEN_EXPIRATION_MS}ms"
+    echo -e "  Refresh Expiration: ${BANTORA_JWT_REFRESH_TOKEN_EXPIRATION_MS}ms"
     
     echo -e "\n${GREEN}============================================${NC}\n"
 }
@@ -689,7 +842,7 @@ start_test_environment() {
     
     # Start services in dependency order using test configuration
     # Core services required for all tests
-    local core_services=("bantora-database" "bantora-api" "bantora-web" "bantora-gateway")
+    local core_services=("bantora-database" "bantora-redis" "bantora-api" "bantora-web" "bantora-gateway")
     # Optional services that can fail without breaking tests
     local optional_services=()
     
@@ -719,7 +872,7 @@ stop_test_environment() {
     
     # Test environment should already be loaded by calling function
     # Test environment should already be loaded by calling function
-    local test_services=("bantora-gateway" "bantora-web" "bantora-api" "bantora-database")
+    local test_services=("bantora-gateway" "bantora-web" "bantora-api" "bantora-redis" "bantora-database")
     
     for service in "${test_services[@]}"; do
         echo -e "${YELLOW}Stopping test service: $service${NC}"
@@ -753,7 +906,7 @@ reset_test_environment() {
     
     # Rebuild and start
     # Rebuild and start
-    local test_services=("bantora-database" "bantora-api" "bantora-web" "bantora-gateway")
+    local test_services=("bantora-database" "bantora-redis" "bantora-api" "bantora-web" "bantora-gateway")
     
     for service in "${test_services[@]}"; do
         echo -e "${YELLOW}Rebuilding test service: $service${NC}"
@@ -772,7 +925,7 @@ show_test_environment_status() {
     
     # Test environment should already be loaded by calling function
     # Test environment should already be loaded by calling function
-    local test_services=("bantora-database" "bantora-api" "bantora-web" "bantora-gateway")
+    local test_services=("bantora-database" "bantora-redis" "bantora-api" "bantora-web" "bantora-gateway")
     
     for service in "${test_services[@]}"; do
         get_service_status "$service"
@@ -1111,7 +1264,7 @@ run_integration_tests() {
     start_test_environment
     
     # Check if required services are running
-    local required_services=("bantora-database" "bantora-api")
+    local required_services=("bantora-database" "bantora-redis" "bantora-api")
     for service in "${required_services[@]}"; do
         local container_name
         container_name=$(get_container_name_for_service "$service")
@@ -1157,10 +1310,22 @@ run_playwright_tests() {
     # Always restart test environment to fix authentication issues
     echo -e "${YELLOW}Restarting test environment to ensure clean state...${NC}"
     stop_test_environment
+
+    # Ensure the running web container includes the latest Flutter build output
+    echo -e "${YELLOW}Rebuilding API + Web for UI tests...${NC}"
+    if ! build_service "bantora-api"; then
+        echo -e "${RED}Failed to rebuild bantora-api for UI tests${NC}"
+        return 1
+    fi
+    if ! build_service "bantora-web"; then
+        echo -e "${RED}Failed to rebuild bantora-web for UI tests${NC}"
+        return 1
+    fi
+
     start_test_environment
     
     # UI tests only need core services
-    local ui_services=("bantora-database" "bantora-api" "bantora-web" "bantora-gateway")
+    local ui_services=("bantora-database" "bantora-redis" "bantora-api" "bantora-web" "bantora-gateway")
     
     # Check if required services are running
     for service in "${ui_services[@]}"; do
@@ -1183,11 +1348,38 @@ run_playwright_tests() {
     echo "Running Playwright UI tests..."
     
     echo "Running Java Playwright tests..."
-    
+
+    export PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=180000
+
+    cd "$SCRIPT_DIR"
+
+    local playwright_cache_home="${HOME:-/home/${USER}}"
+    export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$playwright_cache_home/.cache/ms-playwright}"
+    export PLAYWRIGHT_SKIP_BROWSER_GC=1
+
+    mkdir -p "$PLAYWRIGHT_BROWSERS_PATH"
+
+    local chromium_present=0
+    shopt -s nullglob
+    for exe in \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux/chrome \
+        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux64/chrome
+    do
+        if [ -x "$exe" ]; then
+            chromium_present=1
+            break
+        fi
+    done
+    shopt -u nullglob
+
+    if [ "$chromium_present" -eq 0 ]; then
+        "$SCRIPT_DIR/gradlew" :bantora-web:installPlaywrightChromium
+    fi
+
     if [ -n "$TESTS_PATTERN" ]; then
-        ./gradlew :bantora-web:test --tests "$TESTS_PATTERN"
+        "$SCRIPT_DIR/gradlew" :bantora-web:test --tests "$TESTS_PATTERN"
     else
-        ./gradlew :bantora-web:test --no-build-cache --rerun-tasks
+        "$SCRIPT_DIR/gradlew" :bantora-web:test --no-build-cache --rerun-tasks
     fi
     
     if [ $? -ne 0 ]; then
@@ -1208,7 +1400,7 @@ setup_clean_test_environment() {
     
     # Stop all dev containers to ensure no conflicts
     echo -e "${YELLOW}Stopping all dev containers to ensure clean test environment...${NC}"
-    local dev_services=("bantora-gateway" "bantora-web" "bantora-api" "bantora-database")
+    local dev_services=("bantora-gateway" "bantora-web" "bantora-api" "bantora-redis" "bantora-database")
     
     for service in "${dev_services[@]}"; do
         local container_id=$(docker ps -q -f "name=^${service}$" 2>/dev/null || true)
@@ -1220,7 +1412,7 @@ setup_clean_test_environment() {
     
     # Build and start test containers
     echo -e "${BLUE}Building and starting test containers...${NC}"
-    local test_services=("bantora-database" "bantora-api" "bantora-web" "bantora-gateway")
+    local test_services=("bantora-database" "bantora-redis" "bantora-api" "bantora-web" "bantora-gateway")
     
     for service in "${test_services[@]}"; do
         echo -e "${BLUE}Setting up test service: $service${NC}"
@@ -1258,7 +1450,7 @@ show_test_environment_status() {
     
     echo ""
     echo -e "${BOLD}Dev Containers:${NC}"
-    local dev_services=("bantora-database" "bantora-api" "bantora-web" "bantora-gateway")
+    local dev_services=("bantora-database" "bantora-redis" "bantora-api" "bantora-web" "bantora-gateway")
     
     for service in "${dev_services[@]}"; do
         local container_id=$(docker ps -q -f "name=^${service}$" 2>/dev/null || true)
@@ -1272,7 +1464,7 @@ show_test_environment_status() {
     
     echo ""
     echo -e "${BOLD}Port Conflicts:${NC}"
-    local test_ports=("15432" "18091" "18080" "17083")
+    local test_ports=("13432" "13091" "13080" "13083")
     local conflicts_found=false
     
     for port in "${test_ports[@]}"; do
@@ -1334,32 +1526,38 @@ run_all_tests() {
 build_flutter_web() {
     local api_url=${1}
     echo -e "${CYAN}=== Building Flutter Web ===${NC}"
-    cd "$SCRIPT_DIR/bantora-web/bantora_app"
-    
-    if ! command -v flutter &> /dev/null; then
-        echo -e "${RED}Flutter not installed. Please install Flutter first.${NC}"
-        echo -e "${YELLOW}Visit: https://flutter.dev/docs/get-started/install${NC}"
-        return 1
-    fi
-    
-    flutter pub get
-    
-    if [ -n "$api_url" ]; then
+    (
+        cd "$SCRIPT_DIR/bantora-web/bantora_app" || exit 1
+        
+        if ! command -v flutter &> /dev/null; then
+            echo -e "${RED}Flutter not installed. Please install Flutter first.${NC}"
+            echo -e "${YELLOW}Visit: https://flutter.dev/docs/get-started/install${NC}"
+            exit 1
+        fi
+        
+        flutter pub get
+
+        if [ -z "$api_url" ]; then
+            api_url="$BANTORA_APP_BASE_URL"
+        fi
+
+        if [ -z "$api_url" ]; then
+            echo -e "${RED}Missing required API URL for Flutter web build.${NC}"
+            echo -e "${YELLOW}Set BANTORA_APP_BASE_URL in .env or pass it to --build-web.${NC}"
+            exit 1
+        fi
+
         echo -e "${BLUE}Building with API_URL: $api_url${NC}"
-        # Pass API_URL as Dart environment variable
         flutter build web --release --dart-define=API_URL="$api_url"
-    else
-        echo -e "${BLUE}Building with default API URL${NC}"
-        flutter build web --release
-    fi
-    
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Flutter web build complete!${NC}"
-        echo -e "${BLUE}Output: $SCRIPT_DIR/bantora-web/bantora_app/build/web${NC}"
-    else
-        echo -e "${RED}Flutter web build failed!${NC}"
-        return 1
-    fi
+        
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}Flutter web build complete!${NC}"
+            echo -e "${BLUE}Output: $SCRIPT_DIR/bantora-web/bantora_app/build/web${NC}"
+        else
+            echo -e "${RED}Flutter web build failed!${NC}"
+            exit 1
+        fi
+    )
 }
 
 # Deploy to GCP
@@ -1376,7 +1574,6 @@ deploy() {
         echo -e "${YELLOW}API URL not found. Proceeding with initial deployment...${NC}"
         api_url=""
     else
-        api_url="${api_url}/api"
         echo -e "${GREEN}Found URL: $api_url${NC}"
     fi
     
@@ -1408,7 +1605,6 @@ deploy() {
         local new_api_url=$(cd "$SCRIPT_DIR/terraform" && terraform output -raw bantora_api_url 2> /dev/null)
         
         if [ -n "$new_api_url" ]; then
-             new_api_url="${new_api_url}/api"
              echo -e "${GREEN}New API URL detected: $new_api_url${NC}"
              echo -e "${BLUE}Rebuilding Flutter Web with correct API URL...${NC}"
              
@@ -1434,8 +1630,24 @@ deploy() {
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Allow usage/help without requiring environment or credentials
+if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    print_usage
+    exit 0
+fi
+
 # Load environment variables first
 source_env
+
+# Load secret credentials and validate (fail-fast)
+source_credentials
+assert_required_secrets
+
+if [ -z "$REDIS_INTERNAL_PORT" ]; then
+    echo -e "${RED}Error: REDIS_INTERNAL_PORT must be set in $SCRIPT_DIR/.env${NC}"
+    exit 1
+fi
+export REDIS_HEALTH_CMD="redis-cli -p ${REDIS_INTERNAL_PORT} -a ${REDIS_PASSWORD} ping"
 
 # Default values
 DETACH_MODE="true"

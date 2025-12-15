@@ -23,7 +23,7 @@
 
 ## Overview
 
-Bantora is a Pan-African polling, consensus, and civic engagement platform built on a microservices architecture using Kotlin, Spring Boot WebFlux, and JDK 25. The system allows users to propose ideas, which are then processed by AI (Gemini) to create polls and summaries. The most popular ideas rise to the top, creating a clear signal of the continent's will.
+Bantora is a Pan-African polling, consensus, and civic engagement platform built on a microservices architecture using Java, Spring Boot WebFlux, and JDK 25. The primary user experience is a Flutter Web UI served by Nginx, backed by a reactive API. Users register/login, then can submit ideas and vote on polls; ideas can be processed via Gemini to generate poll-like summaries. The most popular ideas rise to the top, creating a clear signal of the continent's will.
 
 This document serves as the definitive technical guide for all Bantora development work. Every implementation task MUST be verified against these specifications before coding begins.
 
@@ -91,20 +91,34 @@ This modular approach provides:
 ### 2. Phone Number as Primary Identifier
 - Unique identifier for users across the platform
 - E.164 format validation (+263771234567)
-- SMS verification for registration
+- Registration UI must restrict selection to African countries only; the selected country determines the phone calling code prefix used to construct the E.164 phone number.
+- SMS verification is planned (schema and config exist), but the current registration flow marks users as verified and the `/api/v1/auth/verify` endpoint is intentionally not implemented.
 - Multi-region support (all 55 African countries)
 
 ### 3. Quantum-Safe Security (Argon2id)
 - Password hashing using Argon2id algorithm
-- JWT tokens with RS256 signing
-- Refresh token rotation
-- Role-Based Access Control (RBAC)
+- JWT tokens signed with an HMAC secret key (base64-encoded secret), issued as access + refresh tokens
+- Refresh token rotation (refresh tokens are stored and revoked on refresh)
+- Role-Based Access Control (RBAC) is scaffolded (roles exist in tokens / DB), with endpoint-level enforcement currently focused on authenticated write operations
 
 ### 4. Multi-Language Support
-- 13 languages supported (en, sw, yo, zu, am, ar, fr, pt, ha, ig, so, af, sn)
-- Resource bundles in `i18n/messages_{locale}.properties`
-- Dynamic language switching
-- RTL support for Arabic
+- Supported locales are configured via `BANTORA_SUPPORTED_LOCALES` (defaults are not permitted).
+- Users select a preferred language during registration; the selection is persisted to the user profile and used as the default language after login.
+- The registration screen may default to English only when no country-based preference is available.
+
+### 4.1 African Country Metadata (Registration)
+- The system maintains an authoritative set of African countries only.
+- Each country entry must include:
+  - ISO 3166-1 alpha-2 code (e.g., `ZW`)
+  - E.164 calling code prefix (e.g., `+263`)
+  - Default/preferred language (BCP-47 language tag, e.g., `en`, `sw`, `fr`, `ar`)
+  - Currency code (ISO 4217, e.g., `ZWL`)
+  - A UI flag indicator (rendered in UI; e.g., emoji or asset)
+- Registration uses this metadata to:
+  - Restrict selectable countries to Africa only
+  - Display `[FLAG] +<calling-code> [local-number]` and construct the E.164 phone number
+  - Prepopulate preferred language and currency
+- Backend must validate that the selected country is African and reject non-African country codes.
 
 ### 5. AI Content Pipeline
 - **Input**: Raw user ideas (Right Column).
@@ -124,8 +138,19 @@ This modular approach provides:
 ### Properties Files Structure
 1. **Base config**: `application.properties` (never contains actual values)
 2. **Profile overrides**: `application-{profile}.properties` (dev, docker, prod)
-3. **Environment variables**: All actual values come from `.env` via Docker Compose
-4. **NO YAML files**: Properties format only
+3. **Non-secret environment variables**: Loaded from repo `.env` via `bantora-docker.sh`
+4. **Secret environment variables**: Loaded from `~/.gcp/credentials_bantora` via `bantora-docker.sh`
+5. **NO YAML files**: Properties format only
+
+### Secrets Management
+- Secrets must never be committed to the repository.
+- `bantora-docker.sh` must source `~/.gcp/credentials_bantora` (fail-fast if missing or incomplete) before running Docker Compose, tests, or deployment.
+- Secrets include:
+  - Database password
+  - Redis password
+  - JWT secret
+  - Gemini API key
+  - SMS provider credentials (e.g., Twilio Account SID + Auth Token)
 
 ### Property Naming Convention
 ```properties
@@ -161,11 +186,12 @@ bantora.security.jwt.expiration.ms=86400000
 
 ### Authentication Flow
 1. User registers/logins with phone number (Unique Identifier).
-2. SMS verification code sent.
-3. User confirms code and sets password.
-4. Password hashed with Argon2id. (time=3, memory=65536, parallelism=24
-5. JWT access token issued. (7 days expiry)
-6. **Strict Enforcement**: Users must be logged in to vote or post. One vote per user per poll/idea is enforced at the database level.
+2. Password is hashed with Argon2id (configured via environment variables).
+3. JWT access token + refresh token are issued.
+4. Refresh tokens are persisted and rotated (revoked-on-refresh).
+5. **Strict Enforcement**: Users must be logged in to vote, submit ideas, or upvote ideas. One vote per user per poll is enforced via a database unique constraint.
+
+SMS verification is not currently part of the running UI flow; `/api/v1/auth/verify` fails fast to avoid implying SMS is implemented.
 
 ### Authorization (RBAC)
 - **Roles**: USER, MODERATOR, ADMIN, SUPERADMIN
@@ -173,89 +199,82 @@ bantora.security.jwt.expiration.ms=86400000
 - **Scope**: National, Regional (SADC/ECOWAS/EAC), Continental
 
 ### API Security
-- All `/api/**` endpoints require JWT token
-- Public endpoints: `/api/v1/auth/**`, `/api/v1/polls/public/**`
-- Rate limiting: 100 requests/minute per IP
-- CORS: Configured via `BANTORA_ALLOWED_ORIGINS`
+- Public endpoints:
+  - `/api/v1/auth/**`
+  - `/actuator/**`
+  - `GET /api/**`
+- Authenticated endpoints (write operations):
+  - `POST /api/votes`
+  - `POST /api/ideas`
+  - `POST /api/ideas/{id}/upvote`
+- Rate limiting is implemented at the gateway layer.
+- CORS: Configured via `BANTORA_ALLOWED_ORIGINS`.
 
 ## Database Architecture
 
 ### Schema Design
+The authoritative schema is defined in Flyway migrations under `bantora-api/src/main/resources/db/migration`.
+
+Key tables (PostgreSQL 16):
 ```
-bantora_db (PostgreSQL 16)
-  ├── users (phone_number, password_hash, roles, verified, country_code)
-  ├── ideas (id, user_id, content, timestamp, status)  <-- Raw user proposals
-  ├── polls (id, title, description, idea_id, scope, region, creator_id, status) <-- Linked to ideas
-  ├── poll_options (id, poll_id, text, votes_count)
-  ├── votes (id, poll_id, option_id, user_id, timestamp) <-- Unique constraint (poll_id, user_id)
-  ├── verification_codes (phone_number, code, expires_at, attempts)
-  ├── refresh_tokens (token, user_id, expires_at, revoked)
-  └── audit_logs (action, user_id, resource, timestamp, details)
+bantora_user (phone_number PK, password_hash, country_code, verified, enabled, preferred_language, ...)
+bantora_user_role (phone_number, role)
+bantora_poll (id, title, description, creator_phone, scope, status, allow_anonymous, total_votes, ...)
+bantora_poll_option (id, poll_id, option_text, votes_count, ...)
+bantora_vote (id, poll_id, option_id, user_phone, anonymous, voted_at, ...)
+bantora_idea (id, user_phone, content, status, ai_summary, upvotes, ...)
+bantora_verification_code (phone_number, code, expires_at, attempts, verified)
+bantora_refresh_token (id, token, user_phone, expires_at, revoked)
 ```
 
 ### Data Persistence
-- **ORM**: Hibernate with R2DBC for reactive access
-- **Migrations**: Flyway versioned migrations
-- **Initialization**: `V1__initial_schema.sql`, `V2__seed_data.sql`
-- **Development**: `spring.jpa.hibernate.ddl-auto=validate`
-- **Production**: `spring.flyway.enabled=true`
+- **Reactive access**: Spring Data R2DBC repositories for runtime operations
+- **Migrations**: Flyway versioned migrations (`V1__legacy_schema.sql`, `V2__bantora_schema.sql`, `V3__bantora_test_data.sql`)
+- **JPA**: Enabled for schema validation and Flyway JDBC connectivity (dev profile uses `spring.jpa.hibernate.ddl-auto=validate`)
 
 ## API Communication Pattern
 
 ### RESTful API Standards
-- **Base URL**: `/api/v1`
+- **Auth base URL**: `/api/v1/auth`
+- **Application base URL**: `/api`
 - **Versioning**: URI versioning (`/v1`, `/v2`)
 - **Methods**: GET, POST, PUT, DELETE, PATCH
 - **Status Codes**: 200 (OK), 201 (Created), 400 (Bad Request), 401 (Unauthorized), 403 (Forbidden), 404 (Not Found), 500 (Internal Error)
 
 ### Response Format
-```json
-{
-  "success": true,
-  "data": { ... },
-  "message": "Poll created successfully",
-  "timestamp": "2025-11-28T13:55:00Z"
-}
-```
+There are two response shapes currently in use:
+
+1. `ApiResponse<T>` wrapper (used by auth endpoints)
+2. Simple map payloads (used by `/api/**` endpoints) with keys like `success`, `data`, `error`, `timestamp`
 
 ### API Endpoints
 
 #### Authentication
 - `POST /api/v1/auth/register` - Register with phone number
-- `POST /api/v1/auth/verify` - Verify SMS code
 - `POST /api/v1/auth/login` - Login with phone + password
-- `POST /api/v1/auth/refresh` - Refresh access token
+- `POST /api/v1/auth/refresh` - Refresh access token (refresh token in `Authorization` header)
 - `POST /api/v1/auth/logout` - Revoke refresh token
+- `POST /api/v1/auth/verify` - Not implemented (fails fast)
 
 #### Polls
-- `GET /api/v1/polls` - List polls (paginated, filtered)
-- `POST /api/v1/polls` - Create new poll
-- `GET /api/v1/polls/{id}` - Get poll details
-- `PUT /api/v1/polls/{id}` - Update poll (moderator)
-- `DELETE /api/v1/polls/{id}` - Delete poll (admin)
-- `POST /api/v1/polls/{id}/vote` - Cast vote
-- `GET /api/v1/polls/{id}/results` - Get real-time results
+- `GET /api/polls` - List polls
+- `GET /api/polls/{id}` - Get poll details
+- `GET /api/polls/popular` - List popular polls
+- `POST /api/votes` - Cast vote (authenticated)
 
-#### Users
-- `GET /api/v1/users/me` - Get current user profile
-- `PUT /api/v1/users/me` - Update profile
-- `POST /api/v1/users/me/language` - Set preferred language
-
-#### Admin
-- `GET /api/v1/admin/polls/pending` - Polls awaiting approval
-- `POST /api/v1/admin/polls/{id}/approve` - Approve poll
-- `POST /api/v1/admin/polls/{id}/reject` - Reject poll
-- `GET /api/v1/admin/users` - List users (paginated)
-- `PUT /api/v1/admin/users/{id}/role` - Update user role
+#### Ideas
+- `GET /api/ideas` - List pending ideas by default
+- `POST /api/ideas` - Create idea (authenticated)
+- `POST /api/ideas/{id}/upvote` - Upvote idea (authenticated)
 
 ## Build & Deployment
 
 ### Technology Stack
-- **Language**: Kotlin 2.1.0
-- **JDK**: 25 (OpenJDK)
-- **Framework**: Spring Boot 3.4.0 with WebFlux
-- **Build Tool**: Gradle 8.11.1 with Kotlin DSL
-- **Database**: PostgreSQL 16 with R2DBC
+- **Language**: Java
+- **JDK**: 25
+- **Framework**: Spring Boot 3.5.0 with WebFlux
+- **Build Tool**: Gradle wrapper 9.2.1
+- **Database**: PostgreSQL 16
 - **Cache**: Redis 7.4
 - **Container**: Docker with multi-stage builds
 - **Orchestration**: Docker Compose
@@ -269,18 +288,23 @@ bantora_db (PostgreSQL 16)
 - **Icons**: Tree-shaken (99.5% size reduction)
 
 ### Build Commands
+All builds and test runs are driven through `bantora-docker.sh`.
+
 ```bash
-# Build all modules
-./gradlew clean build -x test
+# Rebuild all services in dependency order
+./bantora-docker.sh --rebuild-all
 
-# Build specific module
-./gradlew :bantora-api:bootJar -x test
-
-# Run tests
-./gradlew test
-
-# Docker build
+# Rebuild a specific service
 ./bantora-docker.sh -rrr bantora-api
+
+# Build Flutter web (compile-time API_URL)
+./bantora-docker.sh --build-web http://localhost:3083
+
+# Run tests (unit, integration, playwright, all)
+./bantora-docker.sh --test unit
+./bantora-docker.sh --test integration
+./bantora-docker.sh --test playwright
+./bantora-docker.sh --test all
 ```
 
 ### Network Configuration
@@ -288,95 +312,53 @@ bantora_db (PostgreSQL 16)
 | Service | Internal Port | External Port | Internal URL | External URL |
 |---------|--------------|---------------|--------------|-------------|
 | bantora-gateway | 3083 | 3083 | http://bantora-gateway:3083 | http://localhost:3083 |
-| bantora-database | 5432 | 5432 | jdbc:postgresql://bantora-database:5432/bantora_db | localhost:5432 |
+| bantora-database | 3432 | 3432 | jdbc:postgresql://bantora-database:3432/bantora_db | localhost:3432 |
 | bantora-api | 3081 | 3081 | http://bantora-api:3081 | http://localhost:3081 |
 | bantora-web | 3080 | 3080 | http://bantora-web:3080 | http://localhost:3080 |
-| bantora-redis | 6379 | 6379 | redis://bantora-redis:6379 | localhost:6379 |
+| bantora-redis | 3379 | 3379 | redis://bantora-redis:3379 | localhost:3379 |
 
 ### Application URLs
 - **Homepage**: `http://localhost:3080/`
-- **API Base**: `http://localhost:3081/api/v1`
+- **API Base**: `http://localhost:3081/api`
 - **API Health**: `http://localhost:3081/actuator/health`
 - **Swagger UI**: `http://localhost:3081/swagger-ui.html`
 - **Gateway**: `http://localhost:3083/`
 
+### UI Test Screenshots
+Playwright screenshots are written to:
+
+`bantora-web/test-results/screenshots/*.png`
+
 ## Technical Specifications
 
 ### JDK 25 Configuration
-```kotlin
-// build.gradle.kts
-configure<JavaPluginExtension> {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(25))
-    }
-}
-
-tasks.withType<KotlinCompile> {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_25)
-    }
-}
-```
-
-### Kotlin Coroutines with WebFlux
-```kotlin
-@RestController
-@RequestMapping("/api/v1/polls")
-class PollController(private val pollService: PollService) {
-    
-    @GetMapping
-    suspend fun listPolls(@RequestParam scope: String?): Flow<PollDTO> {
-        return pollService.findByScope(scope)
-    }
-    
-    @PostMapping
-    suspend fun createPoll(@RequestBody request: CreatePollRequest): PollDTO {
-        return pollService.create(request)
-    }
-}
-```
+This repository enforces JDK 25 via Gradle toolchains in the root `build.gradle`.
 
 ### Argon2id Configuration
-```kotlin
-// SecurityConfig.kt
-val argon2 = Argon2Factory.create(
-    Argon2Factory.Argon2Types.ARGON2id,
-    32,      // salt length
-    64       // hash length
-)
-
-fun hashPassword(password: String): String {
-    return argon2.hash(
-        3,       // iterations
-        65536,   // memory (64 MB)
-        4,       // parallelism
-        password.toCharArray()
-    )
-}
-```
+Argon2id parameters are injected from environment variables (see `.env` keys prefixed with `BANTORA_ARGON2_`).
 
 ## Swagger/OpenAPI Documentation
 
 ### Configuration
-```kotlin
+```java
 @Configuration
-class OpenApiConfig {
+public class OpenApiConfig {
+
     @Bean
-    fun openAPI(): OpenAPI {
-        return OpenAPI()
-            .info(Info()
-                .title("Bantora API")
-                .version("v1.0")
-                .description("Pan-African Polling & Civic Engagement Platform")
-            )
-            .addSecurityItem(SecurityRequirement().addList("bearer-jwt"))
-            .components(Components()
-                .addSecuritySchemes("bearer-jwt", SecurityScheme()
-                    .type(SecurityScheme.Type.HTTP)
-                    .scheme("bearer")
-                    .bearerFormat("JWT")
-                )
-            )
+    public OpenAPI openAPI() {
+        return new OpenAPI()
+                .info(new Info()
+                        .title("Bantora API")
+                        .version("v1.0.0")
+                        .description("Pan-African Polling, Consensus & Civic Engagement Platform API"))
+                .addSecurityItem(new SecurityRequirement().addList("bearer-jwt"))
+                .components(new Components()
+                        .addSecuritySchemes("bearer-jwt", new SecurityScheme()
+                                .type(SecurityScheme.Type.HTTP)
+                                .scheme("bearer")
+                                .bearerFormat("JWT")
+                                .in(SecurityScheme.In.HEADER)
+                                .name("Authorization")));
     }
 }
 ```
@@ -385,17 +367,16 @@ class OpenApiConfig {
 
 ### Getting Started
 1. Clone repository
-2. Copy `.env.example` to `.env` and configure
-3. Run `./bantora-docker.sh -rrr bantora-database bantora-api bantora-web`
-4. Access Swagger UI at `http://localhost:3081/swagger-ui.html`
-5. Access web application at `http://localhost:3080`
+2. Ensure `.env` is present and configured for your environment
+3. Build Flutter web assets (requires Flutter on host): `./bantora-docker.sh --build-web http://localhost:3083`
+4. Run `./bantora-docker.sh --rebuild-all`
+5. Access Swagger UI at `http://localhost:3081/swagger-ui.html`
+6. Access web application at `http://localhost:3080`
 
 ### Testing Strategy
-- **Unit Tests**: JUnit 5 + MockK
-- **Integration Tests**: Testcontainers (PostgreSQL, Redis)
-- **API Tests**: WebTestClient
-- **Load Tests**: Gatling for reactive performance
-- **Security Tests**: OWASP ZAP
+- **Unit Tests**: JUnit 5 + Spring Boot Test
+- **Integration Tests**: Testcontainers (PostgreSQL) and Spring Boot test profile
+- **UI Tests**: Java Playwright (non-headless) with screenshot capture
 
 ### CI/CD Pipeline
 - **GitHub Actions**: Automated builds, tests, and Docker image creation
@@ -405,22 +386,22 @@ class OpenApiConfig {
 ## Success Criteria
 
 All features MUST meet these criteria:
-- ✅ No hardcoded values (all config from `.env`)
-- ✅ Fail-fast on missing configuration
-- ✅ All endpoints reactive (Mono/Flux)
-- ✅ Argon2id password hashing
-- ✅ JWT with refresh tokens
-- ✅ Phone number validation (E.164)
-- ✅ Multi-language support
-- ✅ Swagger documentation
-- ✅ Health checks pass
-- ✅ Unit tests > 80% coverage
-- ✅ Integration tests for critical paths
-- ✅ Docker builds successfully
-- ✅ Properties files (no YAML)
-- ✅ JDK 25 compatible
+- No hardcoded values (all config from `.env`)
+- Fail-fast on missing configuration
+- All endpoints reactive (Mono/Flux)
+- Argon2id password hashing
+- JWT with refresh tokens
+- Phone number validation (E.164)
+- Multi-language support
+- Swagger documentation
+- Health checks pass
+- Unit tests > 80% coverage
+- Integration tests for critical paths
+- Docker builds successfully
+- Properties files (no YAML)
+- JDK 25 compatible
 
 ---
 
-**Last Updated**: 2025-11-28
+**Last Updated**: 2025-12-15
 **Maintainer**: Tsungai Kaviya <tkaviya@t3ratech.co.zw>

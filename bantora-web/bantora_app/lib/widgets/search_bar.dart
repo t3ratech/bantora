@@ -58,38 +58,46 @@ class _BantoraSearchBarState extends State<BantoraSearchBar> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: TextField(
-                controller: _controller,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
-                decoration: InputDecoration(
-                  hintText: widget.hintText,
-                  hintStyle: const TextStyle(
-                    color: Color(0xFFA0A0A0),
+              child: Semantics(
+                label: 'search_input',
+                textField: true,
+                child: TextField(
+                  controller: _controller,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
                   ),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
+                  decoration: InputDecoration(
+                    hintText: widget.hintText,
+                    hintStyle: const TextStyle(
+                      color: Color(0xFFA0A0A0),
+                    ),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  onSubmitted: widget.onSearch,
+                  onChanged: widget.onSearch,
                 ),
-                onSubmitted: widget.onSearch,
-                onChanged: widget.onSearch,
               ),
             ),
             if (_controller.text.isNotEmpty)
-              IconButton(
-                icon: const Icon(
-                  Icons.clear,
-                  color: Color(0xFFA0A0A0),
-                  size: 20,
+              Semantics(
+                label: 'search_clear_button',
+                button: true,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.clear,
+                    color: Color(0xFFA0A0A0),
+                    size: 20,
+                  ),
+                  onPressed: () {
+                    _controller.clear();
+                    widget.onSearch?.call('');
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
-                onPressed: () {
-                  _controller.clear();
-                  widget.onSearch?.call('');
-                },
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
               ),
           ],
         ),

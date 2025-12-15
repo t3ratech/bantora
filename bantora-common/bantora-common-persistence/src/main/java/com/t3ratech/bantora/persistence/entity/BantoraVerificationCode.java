@@ -17,12 +17,12 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 
 @Entity
-@Table(name = "verification_codes")
+@Table(name = "bantora_verification_code")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class VerificationCode {
+public class BantoraVerificationCode {
     
     @Id
     @Column(name = "phone_number", length = 20, nullable = false)

@@ -18,16 +18,16 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "votes", uniqueConstraints = @UniqueConstraint(columnNames = { "poll_id", "user_phone" }), indexes = {
-        @Index(name = "idx_votes_poll", columnList = "poll_id"),
-        @Index(name = "idx_votes_user", columnList = "user_phone"),
-        @Index(name = "idx_votes_timestamp", columnList = "voted_at")
+@Table(name = "bantora_vote", uniqueConstraints = @UniqueConstraint(columnNames = { "poll_id", "user_phone" }), indexes = {
+        @Index(name = "idx_bantora_vote_poll", columnList = "poll_id"),
+        @Index(name = "idx_bantora_vote_user", columnList = "user_phone"),
+        @Index(name = "idx_bantora_vote_timestamp", columnList = "voted_at")
 })
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Vote {
+public class BantoraVote {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

@@ -47,6 +47,7 @@ ext {
     postgresqlVersion = '42.7.4'
     hibernateVersion = '6.6.3.Final'
     argon2Version = '2.11'
+    bouncycastleVersion = '1.78'
     jjwtVersion = '0.12.6'
     springdocVersion = '2.6.0'
     logbackVersion = '1.5.12'

@@ -10,7 +10,7 @@ import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
 
-@Table("bantora_users")
+@Table("bantora_user")
 @Data
 @Builder
 @NoArgsConstructor

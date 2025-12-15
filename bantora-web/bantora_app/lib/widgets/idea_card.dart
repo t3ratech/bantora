@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 
 class IdeaCard extends StatefulWidget {
+  final String ideaId;
   final String content;
   final String? aiSummary;
   final int upvotes;
   final String status;
   final VoidCallback? onUpvote;
+  final bool isUpvoting;
 
   const IdeaCard({
     super.key,
+    required this.ideaId,
     required this.content,
     this.aiSummary,
     required this.upvotes,
     required this.status,
     this.onUpvote,
+    required this.isUpvoting,
   });
 
   @override
@@ -25,41 +29,45 @@ class _IdeaCardState extends State<IdeaCard> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
-        child: Container(
-          margin: const EdgeInsets.all(8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF0F0F0F),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: const Color(0xFF1E1E1E),
-              width: 1,
+    return Semantics(
+      label: 'idea_card:${widget.ideaId}:idea_upvotes_count:${widget.ideaId}:${widget.upvotes}',
+      container: true,
+      explicitChildNodes: true,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _isHovered = true),
+        onExit: (_) => setState(() => _isHovered = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
+          child: Container(
+            margin: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F0F0F),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: const Color(0xFF1E1E1E),
+                width: 1,
+              ),
+              boxShadow: _isHovered
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      )
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
             ),
-            boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    )
-                  ]
-                : [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    )
-                  ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // Status Badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -126,29 +134,41 @@ class _IdeaCardState extends State<IdeaCard> {
                       fontSize: 12,
                     ),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: widget.onUpvote,
-                    icon: const Icon(Icons.arrow_upward, size: 16),
-                    label: const Text('Upvote'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF00A859),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ).copyWith(
-                      elevation: MaterialStateProperty.resolveWith<double>(
-                        (Set<MaterialState> states) {
-                          if (states.contains(MaterialState.hovered)) {
-                            return 8;
-                          }
-                          if (states.contains(MaterialState.pressed)) {
-                            return 2;
-                          }
-                          return 4;
-                        },
+                  Semantics(
+                    label: 'idea_upvote_button:${widget.ideaId}',
+                    button: true,
+                    enabled: widget.onUpvote != null,
+                    child: ElevatedButton.icon(
+                      onPressed: widget.onUpvote,
+                      icon: const Icon(Icons.arrow_upward, size: 16),
+                      label: Text(widget.isUpvoting ? 'Upvoting...' : 'Upvote'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.onUpvote == null
+                            ? const Color(0xFF1E1E1E)
+                            : const Color(0xFF00A859),
+                        foregroundColor: widget.onUpvote == null
+                            ? const Color(0xFF64748B)
+                            : Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ).copyWith(
+                        elevation: MaterialStateProperty.resolveWith<double>(
+                          (Set<MaterialState> states) {
+                            if (widget.onUpvote == null) {
+                              return 0;
+                            }
+                            if (states.contains(MaterialState.hovered)) {
+                              return 8;
+                            }
+                            if (states.contains(MaterialState.pressed)) {
+                              return 2;
+                            }
+                            return 4;
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -158,7 +178,8 @@ class _IdeaCardState extends State<IdeaCard> {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   Color _getStatusColor(String status) {

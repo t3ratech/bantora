@@ -17,12 +17,12 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 @Entity
-@Table(name = "poll_options")
+@Table(name = "bantora_poll_option")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PollOption {
+public class BantoraPollOption {
     
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -31,7 +31,7 @@ public class PollOption {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "poll_id", nullable = false)
-    private Poll poll;
+    private BantoraPoll poll;
     
     @Column(name = "option_text", nullable = false, length = 500)
     private String optionText;

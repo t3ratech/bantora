@@ -1,9 +1,23 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'screens/home_screen.dart';
+import 'package:flutter/semantics.dart';
 import 'services/api_service.dart';
+import 'package:provider/provider.dart';
+
+import 'providers/auth_provider.dart';
+import 'providers/theme_provider.dart';
+import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
+
+SemanticsHandle? _webSemanticsHandle;
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const BantoraApp());
+
+  if (kIsWeb) {
+    _webSemanticsHandle ??= SemanticsBinding.instance.ensureSemantics();
+  }
 }
 
 class BantoraApp extends StatelessWidget {
@@ -12,117 +26,74 @@ class BantoraApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // API Service - can be configured via environment variables
-    final apiService = ApiService(
-      baseUrl: const String.fromEnvironment(
-        'API_URL',
-        defaultValue: 'http://localhost:8081',
-      ),
-    );
+    final apiUrl = const String.fromEnvironment('API_URL');
+    if (apiUrl.isEmpty) {
+      throw StateError(
+        'Missing required compile-time environment variable API_URL. '
+        'Build with --dart-define=API_URL=<base-url>.',
+      );
+    }
 
-    return MaterialApp(
-      title: 'Bantora - African Polling Platform',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF000000), // Pure black
-        colorScheme: ColorScheme.dark(
-          brightness: Brightness.dark,
-          primary: const Color(0xFF00A859), // African Green
-          secondary: const Color(0xFFFFD700), // African Yellow/Gold
-          error: const Color(0xFFDC143C), // African Red
-          background: const Color(0xFF000000), // Pure black
-          surface: const Color(0xFF0F0F0F), // Near black for cards
-          onPrimary: Colors.white,
-          onSecondary: Colors.black,
-          onError: Colors.white,
-          onBackground: Colors.white,
-          onSurface: Colors.white,
-        ),
-        useMaterial3: true,
-        
-        // Card theme with dark background and subtle border
-        cardTheme: CardThemeData(
-          elevation: 0,
-          color: const Color(0xFF0F0F0F),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(
-              color: Color(0xFF1E1E1E),
-              width: 1,
+    final apiService = ApiService(baseUrl: apiUrl);
+
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider(apiService: apiService)),
+      ],
+      child: Consumer2<AuthProvider, ThemeProvider>(
+        builder: (context, authProvider, themeProvider, _) {
+          return MaterialApp(
+            key: ValueKey<bool>(authProvider.isAuthenticated),
+            title: 'Bantora - African Polling Platform',
+            debugShowCheckedModeBanner: false,
+            themeMode: themeProvider.themeMode,
+            theme: ThemeData(
+              colorScheme: const ColorScheme.light(
+                primary: Color(0xFF00A859),
+                onPrimary: Colors.white,
+                secondary: Color(0xFF0F0F0F),
+                surface: Colors.white,
+                onSurface: Colors.black,
+                error: Color(0xFFDC143C),
+                onError: Colors.white,
+              ),
+              useMaterial3: true,
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                elevation: 0,
+              ),
+              scaffoldBackgroundColor: Colors.white,
             ),
-          ),
-        ),
-        
-        // Input decoration theme
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: const Color(0xFF0F0F0F),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF1E1E1E)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF1E1E1E)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: Color(0xFF00A859), width: 2),
-          ),
-        ),
-        
-        // Text theme for high contrast
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          displayMedium: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          displaySmall: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          headlineLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          headlineMedium: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-          headlineSmall: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-          titleLarge: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-          titleMedium: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-          titleSmall: TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-          bodyLarge: TextStyle(color: Colors.white),
-          bodyMedium: TextStyle(color: Colors.white),
-          bodySmall: TextStyle(color: Color(0xFFA0A0A0)), // Light gray for secondary text
-          labelLarge: TextStyle(color: Colors.white),
-          labelMedium: TextStyle(color: Color(0xFFA0A0A0)),
-          labelSmall: TextStyle(color: Color(0xFFA0A0A0)),
-        ),
-        
-        // AppBar theme
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF000000),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: true,
-        ),
-        
-        // Button themes
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF00A859), // Green for primary actions
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+            darkTheme: ThemeData(
+              colorScheme: const ColorScheme.dark(
+                primary: Color(0xFF00A859),
+                onPrimary: Colors.white,
+                secondary: Color(0xFFFFD700),
+                surface: Color(0xFF000000),
+                onSurface: Colors.white,
+                error: Color(0xFFDC143C),
+                onError: Colors.white,
+              ),
+              useMaterial3: true,
+              appBarTheme: const AppBarTheme(
+                backgroundColor: Color(0xFF000000),
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              scaffoldBackgroundColor: const Color(0xFF000000),
             ),
-          ),
-        ),
-        
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF00A859),
-          ),
-        ),
-        
-        // Divider theme
-        dividerTheme: const DividerThemeData(
-          color: Color(0xFF1E1E1E),
-          thickness: 1,
-        ),
+            home: authProvider.isInitialized
+                ? (authProvider.isAuthenticated
+                    ? HomeScreen(apiService: apiService)
+                    : const LoginScreen())
+                : const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  ),
+          );
+        },
       ),
-      home: HomeScreen(apiService: apiService),
     );
   }
 }

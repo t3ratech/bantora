@@ -28,6 +28,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.security:spring-security-crypto'
     implementation "de.mkammerer:argon2-jvm:${rootProject.ext.argon2Version}"
+    implementation "org.bouncycastle:bcprov-jdk18on:${rootProject.ext.bouncycastleVersion}"
     
     // JWT
     implementation "io.jsonwebtoken:jjwt-api:${rootProject.ext.jjwtVersion}"
@@ -42,6 +43,10 @@ dependencies {
     implementation "org.postgresql:postgresql:${rootProject.ext.postgresqlVersion}"
     implementation 'org.postgresql:r2dbc-postgresql:1.0.6.RELEASE'
     runtimeOnly 'io.r2dbc:r2dbc-pool'
+    
+    // Flyway for database migrations
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     
 
     

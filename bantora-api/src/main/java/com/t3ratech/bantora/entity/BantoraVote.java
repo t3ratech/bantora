@@ -11,7 +11,7 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Table("bantora_votes")
+@Table("bantora_vote")
 @Data
 @Builder
 @NoArgsConstructor

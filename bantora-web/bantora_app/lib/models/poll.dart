@@ -71,14 +71,12 @@ class Poll {
 
 class PollOption {
   final String id;
-  final String pollId;
   final String optionText;
   final int optionOrder;
   final int votesCount;
 
   PollOption({
     required this.id,
-    required this.pollId,
     required this.optionText,
     required this.optionOrder,
     required this.votesCount,
@@ -87,7 +85,6 @@ class PollOption {
   factory PollOption.fromJson(Map<String, dynamic> json) {
     return PollOption(
       id: json['id'],
-      pollId: json['pollId'],
       optionText: json['optionText'],
       optionOrder: json['optionOrder'],
       votesCount: json['votesCount'] ?? 0,
@@ -97,7 +94,6 @@ class PollOption {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'pollId': pollId,
       'optionText': optionText,
       'optionOrder': optionOrder,
       'votesCount': votesCount,

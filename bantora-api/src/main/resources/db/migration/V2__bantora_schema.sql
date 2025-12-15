@@ -3,7 +3,7 @@
 -- R2DBC/Flyway migration
 
 -- Users table
-CREATE TABLE IF NOT EXISTS bantora_users (
+CREATE TABLE IF NOT EXISTS bantora_user (
     phone_number VARCHAR(20) PRIMARY KEY,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(100),
@@ -17,22 +17,22 @@ CREATE TABLE IF NOT EXISTS bantora_users (
     last_login_at TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_country ON bantora_users(country_code);
-CREATE INDEX IF NOT EXISTS idx_users_verified ON bantora_users(verified);
-CREATE INDEX IF NOT EXISTS idx_users_enabled ON bantora_users(enabled);
+CREATE INDEX IF NOT EXISTS idx_bantora_user_country ON bantora_user(country_code);
+CREATE INDEX IF NOT EXISTS idx_bantora_user_verified ON bantora_user(verified);
+CREATE INDEX IF NOT EXISTS idx_bantora_user_enabled ON bantora_user(enabled);
 
 -- User roles table
-CREATE TABLE IF NOT EXISTS bantora_user_roles (
+CREATE TABLE IF NOT EXISTS bantora_user_role (
     phone_number VARCHAR(20) NOT NULL,
     role VARCHAR(20) NOT NULL,
     PRIMARY KEY (phone_number, role),
-    FOREIGN KEY (phone_number) REFERENCES bantora_users(phone_number) ON DELETE CASCADE
+    FOREIGN KEY (phone_number) REFERENCES bantora_user(phone_number) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_roles_phone ON bantora_user_roles(phone_number);
+CREATE INDEX IF NOT EXISTS idx_bantora_user_role_phone ON bantora_user_role(phone_number);
 
 -- Polls table
-CREATE TABLE IF NOT EXISTS bantora_polls (
+CREATE TABLE IF NOT EXISTS bantora_poll (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     description TEXT,
@@ -49,31 +49,31 @@ CREATE TABLE IF NOT EXISTS bantora_polls (
     total_votes BIGINT NOT NULL DEFAULT 0,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (creator_phone) REFERENCES bantora_users(phone_number)
+    FOREIGN KEY (creator_phone) REFERENCES bantora_user(phone_number)
 );
 
-CREATE INDEX IF NOT EXISTS idx_polls_creator ON bantora_polls(creator_phone);
-CREATE INDEX IF NOT EXISTS idx_polls_scope ON bantora_polls(scope);
-CREATE INDEX IF NOT EXISTS idx_polls_status ON bantora_polls(status);
-CREATE INDEX IF NOT EXISTS idx_polls_region ON bantora_polls(region);
-CREATE INDEX IF NOT EXISTS idx_polls_country ON bantora_polls(country_code);
-CREATE INDEX IF NOT EXISTS idx_polls_start_time ON bantora_polls(start_time);
-CREATE INDEX IF NOT EXISTS idx_polls_end_time ON bantora_polls(end_time);
+CREATE INDEX IF NOT EXISTS idx_bantora_poll_creator ON bantora_poll(creator_phone);
+CREATE INDEX IF NOT EXISTS idx_bantora_poll_scope ON bantora_poll(scope);
+CREATE INDEX IF NOT EXISTS idx_bantora_poll_status ON bantora_poll(status);
+CREATE INDEX IF NOT EXISTS idx_bantora_poll_region ON bantora_poll(region);
+CREATE INDEX IF NOT EXISTS idx_bantora_poll_country ON bantora_poll(country_code);
+CREATE INDEX IF NOT EXISTS idx_bantora_poll_start_time ON bantora_poll(start_time);
+CREATE INDEX IF NOT EXISTS idx_bantora_poll_end_time ON bantora_poll(end_time);
 
 -- Poll options table
-CREATE TABLE IF NOT EXISTS bantora_poll_options (
+CREATE TABLE IF NOT EXISTS bantora_poll_option (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     poll_id UUID NOT NULL,
     option_text VARCHAR(500) NOT NULL,
     option_order INTEGER NOT NULL,
     votes_count BIGINT NOT NULL DEFAULT 0,
-    FOREIGN KEY (poll_id) REFERENCES bantora_polls(id) ON DELETE CASCADE
+    FOREIGN KEY (poll_id) REFERENCES bantora_poll(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_poll_options_poll ON bantora_poll_options(poll_id);
+CREATE INDEX IF NOT EXISTS idx_bantora_poll_option_poll ON bantora_poll_option(poll_id);
 
 -- Votes table
-CREATE TABLE IF NOT EXISTS bantora_votes (
+CREATE TABLE IF NOT EXISTS bantora_vote (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     poll_id UUID NOT NULL,
     option_id UUID NOT NULL,
@@ -82,18 +82,18 @@ CREATE TABLE IF NOT EXISTS bantora_votes (
     voted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ip_address VARCHAR(45),
     user_agent VARCHAR(500),
-    FOREIGN KEY (poll_id) REFERENCES bantora_polls(id) ON DELETE CASCADE,
-    FOREIGN KEY (option_id) REFERENCES bantora_poll_options(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_phone) REFERENCES bantora_users(phone_number) ON DELETE SET NULL,
+    FOREIGN KEY (poll_id) REFERENCES bantora_poll(id) ON DELETE CASCADE,
+    FOREIGN KEY (option_id) REFERENCES bantora_poll_option(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_phone) REFERENCES bantora_user(phone_number) ON DELETE SET NULL,
     CONSTRAINT unique_poll_user UNIQUE (poll_id, user_phone)
 );
 
-CREATE INDEX IF NOT EXISTS idx_votes_poll ON bantora_votes(poll_id);
-CREATE INDEX IF NOT EXISTS idx_votes_user ON bantora_votes(user_phone);
-CREATE INDEX IF NOT EXISTS idx_votes_timestamp ON bantora_votes(voted_at);
+CREATE INDEX IF NOT EXISTS idx_bantora_vote_poll ON bantora_vote(poll_id);
+CREATE INDEX IF NOT EXISTS idx_bantora_vote_user ON bantora_vote(user_phone);
+CREATE INDEX IF NOT EXISTS idx_bantora_vote_timestamp ON bantora_vote(voted_at);
 
 -- Ideas table
-CREATE TABLE IF NOT EXISTS bantora_ideas (
+CREATE TABLE IF NOT EXISTS bantora_idea (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_phone VARCHAR(20) NOT NULL,
     content TEXT NOT NULL,
@@ -102,9 +102,38 @@ CREATE TABLE IF NOT EXISTS bantora_ideas (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     processed_at TIMESTAMP,
     upvotes BIGINT NOT NULL DEFAULT 0,
-    FOREIGN KEY (user_phone) REFERENCES bantora_users(phone_number)
+    FOREIGN KEY (user_phone) REFERENCES bantora_user(phone_number)
 );
 
-CREATE INDEX IF NOT EXISTS idx_ideas_user ON bantora_ideas(user_phone);
-CREATE INDEX IF NOT EXISTS idx_ideas_status ON bantora_ideas(status);
-CREATE INDEX IF NOT EXISTS idx_ideas_created ON bantora_ideas(created_at);
+CREATE INDEX IF NOT EXISTS idx_bantora_idea_user ON bantora_idea(user_phone);
+CREATE INDEX IF NOT EXISTS idx_bantora_idea_status ON bantora_idea(status);
+CREATE INDEX IF NOT EXISTS idx_bantora_idea_created ON bantora_idea(created_at);
+
+-- Verification codes table
+CREATE TABLE IF NOT EXISTS bantora_verification_code (
+    phone_number VARCHAR(20) PRIMARY KEY,
+    code VARCHAR(10) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    verified BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (phone_number) REFERENCES bantora_user(phone_number) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_bantora_verification_code_expires ON bantora_verification_code(expires_at);
+CREATE INDEX IF NOT EXISTS idx_bantora_verification_code_verified ON bantora_verification_code(verified);
+
+-- Refresh tokens table
+CREATE TABLE IF NOT EXISTS bantora_refresh_token (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    token VARCHAR(500) NOT NULL UNIQUE,
+    user_phone VARCHAR(20) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_phone) REFERENCES bantora_user(phone_number) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_bantora_refresh_token_token ON bantora_refresh_token(token);
+CREATE INDEX IF NOT EXISTS idx_bantora_refresh_token_user ON bantora_refresh_token(user_phone);
+CREATE INDEX IF NOT EXISTS idx_bantora_refresh_token_expires ON bantora_refresh_token(expires_at);

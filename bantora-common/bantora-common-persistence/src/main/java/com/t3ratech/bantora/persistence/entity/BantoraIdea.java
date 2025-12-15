@@ -18,13 +18,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@jakarta.persistence.Table(name = "ideas")
-@org.springframework.data.relational.core.mapping.Table("ideas")
+@jakarta.persistence.Table(name = "bantora_idea")
+@org.springframework.data.relational.core.mapping.Table("bantora_idea")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Idea {
+public class BantoraIdea {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

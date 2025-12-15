@@ -51,11 +51,11 @@ resource "google_cloud_run_v2_service" "bantora_api" {
       }
       env {
         name  = "DB_PORT"
-        value = "5432" 
+        value = "3432" 
       }
       env {
         name  = "DB_INTERNAL_PORT"
-        value = "5432"
+        value = "3432"
       }
       env {
         name  = "DB_NAME"
@@ -85,7 +85,7 @@ resource "google_cloud_run_v2_service" "bantora_api" {
       }
       env {
         name  = "REDIS_INTERNAL_PORT"
-        value = "6379"
+        value = "3379"
       }
       # Redis Auth is disabled by default on Basic Tier without auth_enabled=true
       env {
