@@ -44,9 +44,16 @@ dependencies:
   # Local Storage
   shared_preferences: ^2.2.2
 
+  share_plus: ^11.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  integration_test:
+    sdk: flutter
+
+  patrol: ^4.0.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -54,6 +61,14 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+patrol:
+  app_name: Bantora App
+  test_directory: patrol_test
+  android:
+    package_name: com.t3ratech.bantora.bantora_app
+  ios:
+    bundle_id: com.t3ratech.bantora.bantoraApp
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

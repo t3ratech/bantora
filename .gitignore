@@ -50,8 +50,10 @@ logs/
 # Test output
 test-output/
 coverage/
-playwright-report/
 test-results/
+
+# Patrol generated artifacts
+bantora-web/bantora_app/patrol_test/test_bundle.dart
 
 # Docker volumes
 postgres-data/

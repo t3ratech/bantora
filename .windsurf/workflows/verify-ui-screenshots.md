@@ -10,19 +10,19 @@ This workflow ensures every Bantora UI test screenshot is relevant, correctly na
 
 1. **Ensure tests are green**
    - Run full UI + backend test suite:
-     - `./bantora-docker.sh --test-all --module bantora-ui-tests`
-     - `./bantora-docker.sh --test-all`
+     - `./bantora-docker.sh --test all`
+     - `./bantora-docker.sh --test patrol`
    - Confirm both commands finish with `All tests passed!`.
 
 2. **Identify screenshot root**
-   - All Playwright screenshots must live under:
-     - `bantora-ui-tests/src/test/output`
+   - Patrol test artifacts (including screenshots, if configured) must live under:
+     - `bantora-web/bantora_app/test-results/`
 
 ## 2. Enumerate all screenshots
 
 1. **List all PNG screenshots**
    - From the project root, list images:
-     - `find bantora-ui-tests/src/test/output -type f -name "*.png" | sort`
+     - `find bantora-web/bantora_app/test-results -type f -name "*.png" | sort`
    - Treat this list as the authoritative set of screenshots to audit.
 
 2. **Group by scenario**
@@ -36,17 +36,16 @@ This workflow ensures every Bantora UI test screenshot is relevant, correctly na
 For each screenshot **one by one**:
 
 1. **Derive identifiers**
-   - From the relative path `bantora-ui-tests/src/test/output/<category>/<test>/<step>.png` extract:
+   - From the relative path `bantora-web/bantora_app/test-results/<...>.png` extract:
      - `category`
      - `test`
      - `step` (filename without extension)
 
 2. **Locate generating test code**
-   - Search in `bantora-ui-tests/src/test/java` for the step name or folder name:
-     - Look for `takeScreenshot("<category>", "<test>", "<step>")` calls (or similar helpers).
+   - Search in `bantora-web/bantora_app/patrol_test` for the step name or folder name.
    - Identify:
-     - The test class (e.g., `BantoraAuthenticationTest`)
-     - The JUnit test method (e.g., `test01_InvalidLoginShowsError`)
+     - The Patrol test file
+     - The test name string passed to `patrolTest(...)`
 
 3. **Determine expected UI state**
    - Read the test method and surrounding comments/assertions to understand what should be on screen when the screenshot is taken.
@@ -78,12 +77,12 @@ For each screenshot (still one by one):
 For each screenshot classified as **Obsolete**:
 
 1. **Double-check usage**
-   - Search for the path components (category/test/step) in `bantora-ui-tests/src/test/java`.
+   - Search for the path components (category/test/step) in `bantora-web/bantora_app/patrol_test`.
    - If no matches and no active test refers to that screenshot, treat it as obsolete.
 
 2. **Delete the file**
    - Remove the PNG via a terminal command so the deletion is visible in git:
-     - `rm bantora-ui-tests/src/test/output/<category>/<test>/<step>.png`
+     - `rm bantora-web/bantora_app/test-results/<...>.png`
 
 3. **Verify cleanup**
    - Re-run `find ... -name "*.png"` and ensure the deleted file no longer appears.
@@ -109,7 +108,7 @@ For each screenshot classified as **Incorrect**:
    - Do **not** relax assertions just to make the screenshot pass; align screenshots with real expected behaviour.
 
 4. **Regenerate screenshots**
-   - Run the specific test class (or method) that owns the screenshot via `bantora-docker.sh` with `--module bantora-ui-tests` and a `--tests` filter.
+   - Run the specific Patrol test file via `bantora-docker.sh` with a `--tests` filter.
    - Confirm the test passes and generates a new screenshot.
 
 5. **Re-verify the new image**
@@ -119,11 +118,11 @@ For each screenshot classified as **Incorrect**:
 ## 7. Final consistency pass
 
 1. **Re-run all UI tests**
-   - `./bantora-docker.sh --test-all --module bantora-ui-tests`
+   - `./bantora-docker.sh --test patrol`
    - Ensure all tests and screenshot generations pass.
 
 2. **Optional: run full test suite**
-   - `./bantora-docker.sh --test-all`
+   - `./bantora-docker.sh --test all`
 
 3. **Confirm screenshot directory is clean**
    - Re-list all screenshots and spot-check a few per category.

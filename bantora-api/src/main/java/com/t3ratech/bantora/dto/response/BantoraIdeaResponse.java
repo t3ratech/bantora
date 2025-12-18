@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -17,6 +18,8 @@ public class BantoraIdeaResponse {
     private UUID id;
     private String userPhone;
     private String content;
+    private UUID categoryId;
+    private List<String> hashtags;
     private BantoraIdeaStatus status;
     private String aiSummary;
     private LocalDateTime createdAt;

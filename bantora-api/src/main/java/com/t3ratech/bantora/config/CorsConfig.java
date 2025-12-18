@@ -26,7 +26,10 @@ public class CorsConfig {
         CorsConfiguration corsConfig = new CorsConfiguration();
         
         for (String origin : allowedOrigins.split(",")) {
-            corsConfig.addAllowedOrigin(origin.trim());
+            String trimmed = origin.trim();
+            if (!trimmed.isEmpty()) {
+                corsConfig.addAllowedOriginPattern(trimmed);
+            }
         }
         
         corsConfig.addAllowedMethod("*");

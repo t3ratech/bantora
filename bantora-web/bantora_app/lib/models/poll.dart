@@ -3,7 +3,7 @@ class Poll {
   final String title;
   final String description;
   final String creatorPhone;
-  final String? category;
+  final String categoryId;
   final String scope;
   final String? region;
   final String? countryCode;
@@ -18,7 +18,7 @@ class Poll {
     required this.title,
     required this.description,
     required this.creatorPhone,
-    this.category,
+    required this.categoryId,
     required this.scope,
     this.region,
     this.countryCode,
@@ -32,12 +32,17 @@ class Poll {
   int get totalVotes => options.fold(0, (sum, item) => sum + item.votesCount);
 
   factory Poll.fromJson(Map<String, dynamic> json) {
+    final categoryId = json['categoryId'];
+    if (categoryId is! String || categoryId.isEmpty) {
+      throw StateError('Poll is missing required field: categoryId');
+    }
+
     return Poll(
       id: json['id'],
       title: json['title'],
       description: json['description'],
       creatorPhone: json['creatorPhone'],
-      category: json['category'],
+      categoryId: categoryId,
       scope: json['scope'],
       region: json['region'],
       countryCode: json['countryCode'],
@@ -57,6 +62,7 @@ class Poll {
       'title': title,
       'description': description,
       'creatorPhone': creatorPhone,
+      'categoryId': categoryId,
       'scope': scope,
       'region': region,
       'countryCode': countryCode,

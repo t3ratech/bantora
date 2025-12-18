@@ -59,11 +59,11 @@ print_usage() {
     echo "    Log Options:"
     echo "      --tail <N|all>  Show the last N lines or all lines (default: 500)."
     echo "      -f, --follow    Follow log output."
-    echo "  --test [type]       Run tests (unit, integration, playwright, all)"
-    echo "  --tests <pattern>   When used with --test playwright, runs only matching JUnit tests (Gradle --tests pattern)"
+    echo "  --test [type]       Run tests (unit, integration, patrol, all)"
+    echo "  --tests <pattern>   Test selector (JUnit pattern for unit/integration; Dart test path for patrol)"
     echo "  --test-unit         Run Java unit tests via gradle"
     echo "  --test-integration  Run integration tests against running services"
-    echo "  --test-playwright   Run Playwright UI tests"
+    echo "  --test-patrol       Run Patrol UI tests"
     echo "  --test-env-clean    Clean setup test environment with full isolation"
     echo "  --test-env-status   Show test environment status and conflicts"
     echo "  --cleanup           Stop and remove all containers"
@@ -89,7 +89,7 @@ print_usage() {
     echo "  # Run specific test types"
     echo "  $0 --test unit                      # Run all unit tests"
     echo "  $0 --test integration               # Run all integration tests"
-    echo "  $0 --test playwright                # Run all Playwright UI tests"
+    echo "  $0 --test patrol                    # Run all Patrol UI tests"
     echo ""
     echo "  # Run specific test classes or methods"
     echo "  # Run specific test class"
@@ -99,11 +99,11 @@ print_usage() {
     echo ""
     echo "  # UI Auth Test Examples"
     echo "  # Run login tests"
-    echo "  $0 --test playwright --tests 'LoginTest*'"
+    echo "  $0 --test patrol --tests patrol_test/bantora_idea_submission_test.dart"
     echo "  # Run registration tests"
-    echo "  $0 --test playwright --tests 'RegistrationTest*'"
+    echo "  $0 --test patrol --tests patrol_test/bantora_idea_submission_test.dart"
     echo "  # Run all auth-related tests"
-    echo "  $0 --test playwright --tests '*Auth*'"
+    echo "  $0 --test patrol"
     echo ""
     echo "  # API Unit Test Examples"
     echo "  # Run all controller tests"
@@ -1021,8 +1021,8 @@ run_multilang_ui_tests() {
     for lang in "${languages[@]}"; do
         echo -e "${YELLOW}Testing UI for language: $lang${NC}"
         
-        # Run Playwright tests with language-specific validation
-        if ! run_playwright_tests_for_language "$lang"; then
+        # Run Patrol tests with language-specific validation
+        if ! run_patrol_tests_for_language "$lang"; then
             failed_languages+=("$lang")
         fi
     done
@@ -1076,15 +1076,18 @@ test_api_endpoints_for_language() {
     echo "Testing API endpoints for language: $lang"
     
     # Test user registration with language header
-    local test_username="testuser_${lang}_$(date +%s)"
-    local test_email="${test_username}@test.local"
+    local test_phone_suffix
+    test_phone_suffix=$(date +%s)
+    test_phone_suffix=${test_phone_suffix: -7}
+    local test_phone_number="+26377${test_phone_suffix}"
+    local test_email="test_${lang}_$(date +%s)@test.local"
     local test_password="TestPass123!"
     
     # Register user
     local register_response=$(curl -s -w "%{http_code}" -o /tmp/register_response.json \
         -H "Content-Type: application/json" \
         -H "Accept-Language: $lang" \
-        -d "{\"username\":\"$test_username\",\"email\":\"$test_email\",\"password\":\"$test_password\"}" \
+        -d "{\"phoneNumber\":\"$test_phone_number\",\"password\":\"$test_password\",\"countryCode\":\"ZW\",\"preferredCurrency\":\"ZWL\",\"fullName\":\"Test User $lang\",\"email\":\"$test_email\"}" \
         "$base_url/v1/auth/register")
     
     if [ "${register_response: -3}" != "201" ] && [ "${register_response: -3}" != "200" ]; then
@@ -1096,7 +1099,7 @@ test_api_endpoints_for_language() {
     local login_response=$(curl -s -w "%{http_code}" -c /tmp/session_${lang}.txt \
         -H "Content-Type: application/json" \
         -H "Accept-Language: $lang" \
-        -d "{\"username\":\"$test_username\",\"password\":\"$test_password\"}" \
+        -d "{\"phoneNumber\":\"$test_phone_number\",\"password\":\"$test_password\"}" \
         "$base_url/v1/auth/login")
     
     if [ "${login_response: -3}" != "200" ]; then
@@ -1176,28 +1179,16 @@ validate_language_response() {
     fi
 }
 
-# Run Playwright tests for specific language
-run_playwright_tests_for_language() {
+# Run Patrol tests for specific language
+run_patrol_tests_for_language() {
     local lang="$1"
     
-    echo "Running Playwright tests for language: $lang"
+    echo "Running Patrol UI tests for language: $lang"
     
     # Set language-specific environment variables
     export TEST_LANGUAGE="$lang"
-    export PLAYWRIGHT_LANGUAGE="$lang"
-    
-    # Run language-specific Playwright tests
-    if [ -n "$TESTS_PATTERN" ]; then
-        if ! ./gradlew :bantora-web:test --tests "*MultiLanguage*" -Dspring.profiles.active=test -DTEST_LANGUAGE="$lang"; then
-            return 1
-        fi
-    else
-        if ! ./gradlew :bantora-web:test --tests "*MultiLanguage*" -Dspring.profiles.active=test -DTEST_LANGUAGE="$lang"; then
-            return 1
-        fi
-    fi
-    
-    return 0
+
+    run_patrol_tests
 }
 
 # =============================================================================
@@ -1300,18 +1291,18 @@ run_integration_tests() {
     return 0
 }
 
-# Run Playwright UI tests
-run_playwright_tests() {
-    echo -e "${BLUE}Running Playwright UI tests...${NC}"
-    
-    # Load test environment for UI tests  
+# Run Patrol UI tests
+run_patrol_tests() {
+    echo -e "${BLUE}Running Patrol UI tests...${NC}"
+
+    # Load test environment for UI tests
     source_test_env
-    
-    # Always restart test environment to fix authentication issues
+
+    # Always restart test environment to ensure clean state
     echo -e "${YELLOW}Restarting test environment to ensure clean state...${NC}"
     stop_test_environment
 
-    # Ensure the running web container includes the latest Flutter build output
+    # Ensure backend services are rebuilt and running
     echo -e "${YELLOW}Rebuilding API + Web for UI tests...${NC}"
     if ! build_service "bantora-api"; then
         echo -e "${RED}Failed to rebuild bantora-api for UI tests${NC}"
@@ -1323,71 +1314,91 @@ run_playwright_tests() {
     fi
 
     start_test_environment
-    
-    # UI tests only need core services
-    local ui_services=("bantora-database" "bantora-redis" "bantora-api" "bantora-web" "bantora-gateway")
-    
-    # Check if required services are running
-    for service in "${ui_services[@]}"; do
-        local container_name
-        container_name=$(get_container_name_for_service "$service")
-        local container_id=$(docker ps -q -f "name=^${container_name}$" 2>/dev/null || true)
-        if [ -z "$container_id" ]; then
-            echo -e "${YELLOW}Service $service is not running, starting it...${NC}"
-            start_service "$service"
-            if [ $? -ne 0 ]; then
-                echo -e "${RED}Failed to start $service for UI tests${NC}"
-                return 1
-            fi
-        else
-            echo -e "${GREEN}Service $service is running${NC}"
-        fi
-    done
-    
-    # Run Playwright tests with test profile
-    echo "Running Playwright UI tests..."
-    
-    echo "Running Java Playwright tests..."
 
-    export PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=180000
+    # Ensure Patrol CLI is available
+    local patrol_cmd="patrol"
+    local patrol_global_path="$HOME/.pub-cache/bin/patrol"
 
-    cd "$SCRIPT_DIR"
-
-    local playwright_cache_home="${HOME:-/home/${USER}}"
-    export PLAYWRIGHT_BROWSERS_PATH="${PLAYWRIGHT_BROWSERS_PATH:-$playwright_cache_home/.cache/ms-playwright}"
-    export PLAYWRIGHT_SKIP_BROWSER_GC=1
-
-    mkdir -p "$PLAYWRIGHT_BROWSERS_PATH"
-
-    local chromium_present=0
-    shopt -s nullglob
-    for exe in \
-        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux/chrome \
-        "$PLAYWRIGHT_BROWSERS_PATH"/chromium-*/chrome-linux64/chrome
-    do
-        if [ -x "$exe" ]; then
-            chromium_present=1
-            break
-        fi
-    done
-    shopt -u nullglob
-
-    if [ "$chromium_present" -eq 0 ]; then
-        "$SCRIPT_DIR/gradlew" :bantora-web:installPlaywrightChromium
-    fi
-
-    if [ -n "$TESTS_PATTERN" ]; then
-        "$SCRIPT_DIR/gradlew" :bantora-web:test --tests "$TESTS_PATTERN"
+    if command -v patrol >/dev/null 2>&1; then
+        patrol_cmd="patrol"
+    elif [ -x "$patrol_global_path" ]; then
+        patrol_cmd="$patrol_global_path"
     else
-        "$SCRIPT_DIR/gradlew" :bantora-web:test --no-build-cache --rerun-tasks
-    fi
-    
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}Playwright tests failed${NC}"
+        echo -e "${RED}Patrol CLI is not installed or not available.${NC}"
+        echo -e "${YELLOW}Install with: flutter pub global activate patrol_cli${NC}"
+        echo -e "${YELLOW}Then ensure PATH includes: \$HOME/.pub-cache/bin${NC}"
         return 1
     fi
-    
-    echo -e "${GREEN}Playwright tests completed successfully${NC}"
+
+    local api_url="$BANTORA_APP_BASE_URL"
+    if [ -z "$api_url" ]; then
+        echo -e "${RED}Missing required BANTORA_APP_BASE_URL for Patrol UI tests.${NC}"
+        echo -e "${YELLOW}Set BANTORA_APP_BASE_URL in .env (no defaults).${NC}"
+        return 1
+    fi
+
+    echo -e "${BLUE}Running Patrol tests with API_URL: $api_url${NC}"
+
+    local web_results_dir="$SCRIPT_DIR/bantora-web/bantora_app/test-results"
+    local web_report_dir="$SCRIPT_DIR/bantora-web/bantora_app/test-results/patrol-report"
+
+    (
+        cd "$SCRIPT_DIR/bantora-web/bantora_app" || exit 1
+
+        flutter pub get
+
+        "$patrol_cmd" doctor
+
+        if [ -n "$TESTS_PATTERN" ]; then
+            "$patrol_cmd" test --device chrome --target "$TESTS_PATTERN" --dart-define=API_URL="$api_url" --web-results-dir "$web_results_dir" --web-report-dir "$web_report_dir" --web-video on
+        else
+            "$patrol_cmd" test --device chrome --dart-define=API_URL="$api_url" --web-results-dir "$web_results_dir" --web-report-dir "$web_report_dir" --web-video on
+        fi
+    )
+
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Patrol UI tests failed${NC}"
+        return 1
+    fi
+
+    if ! command -v ffmpeg >/dev/null 2>&1; then
+        echo -e "${YELLOW}ffmpeg was not found on PATH. Skipping PNG extraction from web videos.${NC}"
+        echo -e "${YELLOW}Patrol web videos and report are still available under:${NC}"
+        echo -e "${YELLOW}  - $web_results_dir${NC}"
+        echo -e "${YELLOW}  - $web_report_dir${NC}"
+        echo -e "${YELLOW}Install ffmpeg to enable PNG extraction into: $web_results_dir/screenshots${NC}"
+        echo -e "${GREEN}Patrol UI tests completed successfully${NC}"
+        return 0
+    fi
+
+    echo -e "${BLUE}Extracting PNG frames from Patrol web videos...${NC}"
+    mkdir -p "$web_results_dir"
+    mkdir -p "$web_results_dir/screenshots"
+
+    local videos_found=false
+    while IFS= read -r video_path; do
+        if [ -z "$video_path" ]; then
+            continue
+        fi
+
+        videos_found=true
+
+        local rel_path="${video_path#"$web_results_dir"/}"
+        local safe_name
+        safe_name=$(echo "$rel_path" | tr '/ ' '__' | sed 's/[^A-Za-z0-9_.-]/_/g')
+        local out_dir="$web_results_dir/screenshots/${safe_name%.webm}"
+        mkdir -p "$out_dir"
+
+        echo -e "${YELLOW}Extracting frames from: $rel_path${NC}"
+        ffmpeg -y -i "$video_path" -vf "fps=1/3" "$out_dir/frame-%03d.png"
+    done < <(find "$web_results_dir" -type f -name "video.webm")
+
+    if [ "$videos_found" = false ]; then
+        echo -e "${RED}No Patrol video files were found under: $web_results_dir${NC}"
+        return 1
+    fi
+
+    echo -e "${GREEN}Patrol UI tests completed successfully${NC}"
     return 0
 }
 
@@ -1503,9 +1514,9 @@ run_all_tests() {
         failed_tests+=("integration")
     fi
     
-    # Run Playwright tests
-    if ! run_playwright_tests; then
-        failed_tests+=("playwright")
+    # Run UI tests (Patrol)
+    if ! run_patrol_tests; then
+        failed_tests+=("patrol")
     fi
     
     # Report results
@@ -1835,14 +1846,14 @@ while [ $# -gt 0 ]; do
                 "integration")
                     run_integration_tests
                     ;;
-                "playwright")
-                    run_playwright_tests
+                "patrol")
+                    run_patrol_tests
                     ;;
                 "all")
                     run_all_tests
                     ;;
                 *)
-                    echo -e "${RED}Error: Invalid test type '$test_type'. Valid options: unit, integration, playwright, all${NC}"
+                    echo -e "${RED}Error: Invalid test type '$test_type'. Valid options: unit, integration, patrol, all${NC}"
                     exit 1
                     ;;
             esac
@@ -1864,8 +1875,8 @@ while [ $# -gt 0 ]; do
             run_integration_tests
             exit $?
             ;;
-        --test-playwright)
-            run_playwright_tests
+        --test-patrol)
+            run_patrol_tests
             exit $?
             ;;
         --test-env-clean)

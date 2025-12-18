@@ -9,8 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(exclude = { JpaRepositoriesAutoConfiguration.class, HibernateJpaAutoConfiguration.class })
 @EnableScheduling
-@EnableR2dbcRepositories(basePackages = { "com.t3ratech.bantora.repository",
-        "com.t3ratech.bantora.persistence.repository" })
+@EnableR2dbcRepositories(basePackages = { "com.t3ratech.bantora.repository" })
 public class BantoraApiApplication {
 
     public static void main(String[] args) {

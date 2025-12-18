@@ -43,13 +43,14 @@ class BantoraPollServiceTest {
     @BeforeEach
     void setUp() {
         UUID pollId = UUID.randomUUID();
+        UUID categoryId = UUID.randomUUID();
 
         testPoll = BantoraPoll.builder()
                 .id(pollId)
                 .title("Test Poll")
                 .description("Test Description")
                 .creatorPhone("+263785107830")
-                .category("Test")
+                .categoryId(categoryId)
                 .scope(BantoraPollScope.CONTINENTAL)
                 .status(BantoraPollStatus.ACTIVE)
                 .startTime(LocalDateTime.now().minusDays(1))

@@ -50,12 +50,8 @@ resource "google_cloud_run_v2_service" "bantora_api" {
         value = google_sql_database_instance.bantora_db.private_ip_address
       }
       env {
-        name  = "DB_PORT"
-        value = "3432" 
-      }
-      env {
         name  = "DB_INTERNAL_PORT"
-        value = "3432"
+        value = "5432"
       }
       env {
         name  = "DB_NAME"
@@ -85,8 +81,9 @@ resource "google_cloud_run_v2_service" "bantora_api" {
       }
       env {
         name  = "REDIS_INTERNAL_PORT"
-        value = "3379"
+        value = tostring(google_redis_instance.bantora_redis.port)
       }
+
       # Redis Auth is disabled by default on Basic Tier without auth_enabled=true
       env {
         name  = "REDIS_PASSWORD"
@@ -203,31 +200,31 @@ resource "google_cloud_run_v2_service" "bantora_api" {
       # SMS (Dummy values for now or sourced if needed)
       env {
         name = "BANTORA_SMS_PROVIDER"
-        value = "twilio"
+        value = var.bantora_sms_provider
       }
        env {
         name = "BANTORA_SMS_ACCOUNT_SID"
-        value = "dummy"
+        value = var.bantora_sms_account_sid
       }
        env {
         name = "BANTORA_SMS_AUTH_TOKEN"
-        value = "dummy"
+        value = var.bantora_sms_auth_token
       }
        env {
         name = "BANTORA_SMS_FROM_NUMBER"
-        value = "+263771234567"
+        value = var.bantora_sms_from_number
       }
       env {
         name = "BANTORA_SMS_VERIFICATION_CODE_LENGTH"
-        value = "6"
+        value = tostring(var.bantora_sms_verification_code_length)
       }
       env {
         name = "BANTORA_SMS_VERIFICATION_CODE_EXPIRY_MINUTES"
-        value = "10"
+        value = tostring(var.bantora_sms_verification_code_expiry_minutes)
       }
       env {
         name = "BANTORA_SMS_MAX_ATTEMPTS"
-        value = "3"
+        value = tostring(var.bantora_sms_max_attempts)
       }
       
       # AI Service
@@ -244,10 +241,6 @@ resource "google_cloud_run_v2_service" "bantora_api" {
       env {
         name  = "SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA"
         value = "public"
-      }
-      env {
-        name = "SPRING_JPA_hibernate_ddl-auto"
-        value = "update"
       }
     }
     

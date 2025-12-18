@@ -83,6 +83,8 @@ class AuthProvider with ChangeNotifier {
     required String phoneNumber,
     required String password,
     required String countryCode,
+    required String preferredLanguage,
+    required String preferredCurrency,
     String? fullName,
     String? email,
   }) async {
@@ -91,6 +93,8 @@ class AuthProvider with ChangeNotifier {
         phoneNumber: phoneNumber,
         password: password,
         countryCode: countryCode,
+        preferredLanguage: preferredLanguage,
+        preferredCurrency: preferredCurrency,
         fullName: fullName,
         email: email,
       );

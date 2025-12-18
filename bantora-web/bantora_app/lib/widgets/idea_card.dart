@@ -6,6 +6,7 @@ class IdeaCard extends StatefulWidget {
   final String? aiSummary;
   final int upvotes;
   final String status;
+  final VoidCallback? onOpen;
   final VoidCallback? onUpvote;
   final bool isUpvoting;
 
@@ -16,6 +17,7 @@ class IdeaCard extends StatefulWidget {
     this.aiSummary,
     required this.upvotes,
     required this.status,
+    this.onOpen,
     this.onUpvote,
     required this.isUpvoting,
   });
@@ -30,42 +32,45 @@ class _IdeaCardState extends State<IdeaCard> {
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      key: Key('idea_card:${widget.ideaId}'),
       label: 'idea_card:${widget.ideaId}:idea_upvotes_count:${widget.ideaId}:${widget.upvotes}',
       container: true,
       explicitChildNodes: true,
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F0F0F),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFF1E1E1E),
-                width: 1,
+        child: GestureDetector(
+          onTap: widget.onOpen,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
+            child: Container(
+              margin: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F0F0F),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF1E1E1E),
+                  width: 1,
+                ),
+                boxShadow: _isHovered
+                    ? [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        )
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                      ],
               ),
-              boxShadow: _isHovered
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 12,
-                        offset: const Offset(0, 6),
-                      )
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      )
-                    ],
-            ),
-            child: Column(
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
               // Status Badge
@@ -129,6 +134,7 @@ class _IdeaCardState extends State<IdeaCard> {
                 children: [
                   Text(
                     '${widget.upvotes} upvotes',
+                    key: Key('idea_upvotes_text:${widget.ideaId}'),
                     style: const TextStyle(
                       color: Color(0xFF64748B),
                       fontSize: 12,
@@ -139,6 +145,7 @@ class _IdeaCardState extends State<IdeaCard> {
                     button: true,
                     enabled: widget.onUpvote != null,
                     child: ElevatedButton.icon(
+                      key: Key('idea_upvote_button:${widget.ideaId}'),
                       onPressed: widget.onUpvote,
                       icon: const Icon(Icons.arrow_upward, size: 16),
                       label: Text(widget.isUpvoting ? 'Upvoting...' : 'Upvote'),
@@ -175,6 +182,7 @@ class _IdeaCardState extends State<IdeaCard> {
                 ],
               ),
             ],
+              ),
           ),
         ),
       ),

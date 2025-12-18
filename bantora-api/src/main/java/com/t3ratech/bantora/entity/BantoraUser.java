@@ -44,6 +44,9 @@ public class BantoraUser {
     @Column("preferred_language")
     @Builder.Default
     private String preferredLanguage = "en";
+
+    @Column("preferred_currency")
+    private String preferredCurrency;
     
     @Column("created_at")
     private LocalDateTime createdAt;

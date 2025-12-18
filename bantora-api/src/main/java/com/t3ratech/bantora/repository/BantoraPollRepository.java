@@ -20,4 +20,74 @@ public interface BantoraPollRepository extends R2dbcRepository<BantoraPoll, UUID
     
     @Query("SELECT * FROM bantora_poll WHERE status = 'ACTIVE' AND end_time > :now ORDER BY created_at DESC")
     Flux<BantoraPoll> findActiveOrderByCreatedDesc(LocalDateTime now);
+
+    @Query("""
+            SELECT *
+            FROM bantora_poll
+            WHERE status = 'ACTIVE'
+              AND end_time > :now
+              AND category_id = :categoryId
+            ORDER BY created_at DESC
+            """)
+    Flux<BantoraPoll> findActiveByCategoryIdOrderByCreatedDesc(UUID categoryId, LocalDateTime now);
+
+    @Query("""
+            SELECT *
+            FROM bantora_poll
+            WHERE status = 'ACTIVE'
+              AND end_time > :now
+              AND category_id = :categoryId
+            ORDER BY total_votes DESC
+            """)
+    Flux<BantoraPoll> findActiveByCategoryIdOrderByVotesDesc(UUID categoryId, LocalDateTime now);
+
+    @Query("""
+            SELECT p.*
+            FROM bantora_poll p
+            JOIN bantora_poll_hashtag ph ON ph.poll_id = p.id
+            JOIN bantora_hashtag h ON h.id = ph.hashtag_id
+            WHERE p.status = 'ACTIVE'
+              AND p.end_time > :now
+              AND lower(h.tag) = lower(:tag)
+            ORDER BY p.created_at DESC
+            """)
+    Flux<BantoraPoll> findActiveByHashtagOrderByCreatedDesc(String tag, LocalDateTime now);
+
+    @Query("""
+            SELECT p.*
+            FROM bantora_poll p
+            JOIN bantora_poll_hashtag ph ON ph.poll_id = p.id
+            JOIN bantora_hashtag h ON h.id = ph.hashtag_id
+            WHERE p.status = 'ACTIVE'
+              AND p.end_time > :now
+              AND lower(h.tag) = lower(:tag)
+            ORDER BY p.total_votes DESC
+            """)
+    Flux<BantoraPoll> findActiveByHashtagOrderByVotesDesc(String tag, LocalDateTime now);
+
+    @Query("""
+            SELECT p.*
+            FROM bantora_poll p
+            JOIN bantora_poll_hashtag ph ON ph.poll_id = p.id
+            JOIN bantora_hashtag h ON h.id = ph.hashtag_id
+            WHERE p.status = 'ACTIVE'
+              AND p.end_time > :now
+              AND p.category_id = :categoryId
+              AND lower(h.tag) = lower(:tag)
+            ORDER BY p.created_at DESC
+            """)
+    Flux<BantoraPoll> findActiveByCategoryIdAndHashtagOrderByCreatedDesc(UUID categoryId, String tag, LocalDateTime now);
+
+    @Query("""
+            SELECT p.*
+            FROM bantora_poll p
+            JOIN bantora_poll_hashtag ph ON ph.poll_id = p.id
+            JOIN bantora_hashtag h ON h.id = ph.hashtag_id
+            WHERE p.status = 'ACTIVE'
+              AND p.end_time > :now
+              AND p.category_id = :categoryId
+              AND lower(h.tag) = lower(:tag)
+            ORDER BY p.total_votes DESC
+            """)
+    Flux<BantoraPoll> findActiveByCategoryIdAndHashtagOrderByVotesDesc(UUID categoryId, String tag, LocalDateTime now);
 }

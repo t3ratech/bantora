@@ -62,6 +62,7 @@ class _BantoraSearchBarState extends State<BantoraSearchBar> {
                 label: 'search_input',
                 textField: true,
                 child: TextField(
+                  key: const Key('search_input'),
                   controller: _controller,
                   style: const TextStyle(
                     color: Colors.white,
@@ -86,6 +87,7 @@ class _BantoraSearchBarState extends State<BantoraSearchBar> {
                 label: 'search_clear_button',
                 button: true,
                 child: IconButton(
+                  key: const Key('search_clear_button'),
                   icon: const Icon(
                     Icons.clear,
                     color: Color(0xFFA0A0A0),

@@ -20,7 +20,7 @@ public class BantoraPollResponse {
     private String title;
     private String description;
     private String creatorPhone;
-    private String category;
+    private UUID categoryId;
     private BantoraPollScope scope;
     private BantoraPollStatus status;
     private LocalDateTime startTime;

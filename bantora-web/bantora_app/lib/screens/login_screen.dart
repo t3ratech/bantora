@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
@@ -62,148 +63,170 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          Consumer<ThemeProvider>(
-            builder: (context, themeProvider, _) {
-              return IconButton(
-                icon: Icon(
-                  themeProvider.themeMode == ThemeMode.dark
-                      ? Icons.light_mode
-                      : Icons.dark_mode,
-                ),
-                onPressed: () => themeProvider.toggleTheme(),
-              );
+    return Shortcuts(
+      shortcuts: {
+        LogicalKeySet(LogicalKeyboardKey.enter): ActivateIntent(),
+        LogicalKeySet(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
+      },
+      child: Actions(
+        actions: {
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (intent) {
+              if (!_isLoading) {
+                _login();
+              }
+              return null;
             },
           ),
-        ],
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 12),
-                  const Center(
-                    child: ThemedLogo(width: 110, height: 110),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Bantora',
-                    style: Theme.of(context)
-                        .textTheme
-                        .displaySmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                  Text(
-                    'African Polling Platform',
-                    style: Theme.of(context).textTheme.titleMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-                  Semantics(
-                    label: 'login_phone_input',
-                    textField: true,
-                    child: TextFormField(
-                      controller: _phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Phone number (E.164)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.phone),
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            actions: [
+              Consumer<ThemeProvider>(
+                builder: (context, themeProvider, _) {
+                  return IconButton(
+                    icon: Icon(
+                      themeProvider.themeMode == ThemeMode.dark
+                          ? Icons.light_mode
+                          : Icons.dark_mode,
+                    ),
+                    onPressed: () => themeProvider.toggleTheme(),
+                  );
+                },
+              ),
+            ],
+          ),
+          body: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 12),
+                      const Center(
+                        child: ThemedLogo(width: 110, height: 110),
                       ),
-                      keyboardType: TextInputType.phone,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter your phone number';
-                        }
-                        if (_invalidCredentials) {
-                          return 'Invalid phone number or password';
-                        }
-                        return null;
-                      },
-                      textInputAction: TextInputAction.next,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Semantics(
-                    label: 'login_password_input',
-                    textField: true,
-                    child: TextFormField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Bantora',
+                        style: Theme.of(context)
+                            .textTheme
+                            .displaySmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
                       ),
-                      obscureText: true,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) => _login(),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter your password';
-                        }
-                        if (_invalidCredentials) {
-                          return 'Invalid phone number or password';
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Semantics(
-                    label: 'login_button',
-                    button: true,
-                    enabled: !_isLoading,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _login,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.all(16),
+                      Text(
+                        'African Polling Platform',
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center,
                       ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Login'),
-                    ),
+                      const SizedBox(height: 32),
+                      Semantics(
+                        label: 'login_phone_input',
+                        textField: true,
+                        child: TextFormField(
+                          key: const Key('login_phone_input'),
+                          controller: _phoneController,
+                          decoration: const InputDecoration(
+                            labelText: 'Phone number with country code',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.phone),
+                          ),
+                          keyboardType: TextInputType.phone,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter your phone number';
+                            }
+                            if (_invalidCredentials) {
+                              return 'Invalid phone number or password';
+                            }
+                            return null;
+                          },
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Semantics(
+                        label: 'login_password_input',
+                        textField: true,
+                        child: TextFormField(
+                          key: const Key('login_password_input'),
+                          controller: _passwordController,
+                          decoration: const InputDecoration(
+                            labelText: 'Password',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.lock),
+                          ),
+                          obscureText: true,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _login(),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please enter your password';
+                            }
+                            if (_invalidCredentials) {
+                              return 'Invalid phone number or password';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Semantics(
+                        label: 'login_button',
+                        button: true,
+                        enabled: !_isLoading,
+                        child: ElevatedButton(
+                          key: const Key('login_button'),
+                          onPressed: _isLoading ? null : _login,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.all(16),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Login'),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Semantics(
+                        label: 'go_to_register_button',
+                        button: true,
+                        enabled: !_isLoading,
+                        child: TextButton(
+                          key: const Key('go_to_register_button'),
+                          onPressed: _isLoading
+                              ? null
+                              : () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const RegisterScreen(),
+                                    ),
+                                  );
+                                },
+                          child: const Text("Don't have an account? Register"),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Powered by T3raTech Solutions © 2025',
+                        style: Theme.of(context).textTheme.bodySmall,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Semantics(
-                    label: 'go_to_register_button',
-                    button: true,
-                    enabled: !_isLoading,
-                    child: TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const RegisterScreen(),
-                                ),
-                              );
-                            },
-                      child: const Text("Don't have an account? Register"),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  const Divider(),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Powered by T3raTech Solutions © 2025',
-                    style: Theme.of(context).textTheme.bodySmall,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                ),
               ),
             ),
           ),

@@ -34,9 +34,9 @@ public class BantoraPoll {
     
     @Column("creator_phone")
     private String creatorPhone;
-    
-    @Column("category")
-    private String category;
+
+    @Column("category_id")
+    private UUID categoryId;
     
     @Column("scope")
     private BantoraPollScope scope;

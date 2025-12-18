@@ -1,4 +1,0 @@
--- Legacy V1 schema marker
--- This file exists to acknowledge the previous schema state
--- Actual V1 tables already exist in the database from previous deployment
--- Flyway will skip this as it sees the database is already at this version

@@ -38,5 +38,6 @@ public class AuthResponse {
         private String countryCode;
         private Set<String> roles;
         private String preferredLanguage;
+        private String preferredCurrency;
     }
 }

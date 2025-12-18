@@ -8,8 +8,6 @@
 
 package com.t3ratech.bantora.job;
 
-import com.t3ratech.bantora.persistence.entity.BantoraIdea;
-import com.t3ratech.bantora.persistence.repository.IdeaRepository;
 import com.t3ratech.bantora.service.AiService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,36 +15,28 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Flux;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class IdeaProcessingJob {
 
-    private final IdeaRepository ideaRepository;
     private final AiService aiService;
 
-    // Run once a day at midnight
-    @Scheduled(cron = "0 0 0 * * *")
-    public void processIdeasDaily() {
-        log.info("Starting daily idea processing job...");
-        processPendingIdeas().subscribe();
+    @Scheduled(cron = "0 0 * * * *")
+    public void processIdeasHourly() {
+        log.info("Starting hourly AI idea processing job...");
+        aiService.processTopHashtags()
+                .doOnError(e -> log.error("Hourly AI processing failed", e))
+                .subscribe();
     }
 
     // Run on application startup
     @EventListener(ApplicationReadyEvent.class)
     public void onStartup() {
-        log.info("Application started. Checking for pending ideas...");
-        processPendingIdeas().subscribe();
-    }
-
-    private Flux<Void> processPendingIdeas() {
-        return ideaRepository.findByStatus(BantoraIdea.IdeaStatus.PENDING)
-                .flatMap(idea -> {
-                    log.info("Processing idea: {}", idea.getId());
-                    return aiService.processIdea(idea)
-                            .doOnError(e -> log.error("Failed to process idea: {}", idea.getId(), e));
-                });
+        log.info("Application started. Running initial AI idea processing...");
+        aiService.processTopHashtags()
+                .doOnError(e -> log.error("Startup AI processing failed", e))
+                .subscribe();
     }
 }

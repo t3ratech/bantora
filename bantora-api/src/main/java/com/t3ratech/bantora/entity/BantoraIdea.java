@@ -27,6 +27,9 @@ public class BantoraIdea {
     
     @Column("content")
     private String content;
+
+    @Column("category_id")
+    private UUID categoryId;
     
     @Column("status")
     private BantoraIdeaStatus status;

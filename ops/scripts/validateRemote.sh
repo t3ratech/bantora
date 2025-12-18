@@ -36,7 +36,7 @@ echo "Testing Auth Flow via Remote API..."
 echo "Registering new user..."
 TIMESTAMP=$(date +%s)
 # Use a valid test phone number format +263 77 + last 7 digits of timestamp
-# Ensure it's E.164
+# Ensure it's E.164 (phone number with coutry code)
 PHONE_SUFFIX=${TIMESTAMP: -7}
 PHONE_NUMBER="+26377${PHONE_SUFFIX}"
 EMAIL="remote_${TIMESTAMP}@test.com"
@@ -45,7 +45,7 @@ PASSWORD="SecurePass${TIMESTAMP}!"
 echo "Using Phone: $PHONE_NUMBER"
 
 # Register
-REGISTER_PAYLOAD="{\"phoneNumber\":\"$PHONE_NUMBER\",\"password\":\"$PASSWORD\",\"countryCode\":\"ZW\",\"fullName\":\"Test User\",\"email\":\"$EMAIL\"}"
+REGISTER_PAYLOAD="{\"phoneNumber\":\"$PHONE_NUMBER\",\"password\":\"$PASSWORD\",\"countryCode\":\"ZW\",\"preferredLanguage\":\"en\",\"preferredCurrency\":\"ZWL\",\"fullName\":\"Test User\",\"email\":\"$EMAIL\"}"
 echo "Payload: $REGISTER_PAYLOAD"
 
 curl -v -X POST -H "Content-Type: application/json" -d "$REGISTER_PAYLOAD" "${API_URL}/api/v1/auth/register"

@@ -32,7 +32,7 @@ PHONE_NUMBER="+26377${PHONE_SUFFIX}"
 EMAIL="local_${TIMESTAMP}@test.com"
 PASSWORD="SecurePass${TIMESTAMP}!"
 
-REGISTER_PAYLOAD="{\"phoneNumber\":\"$PHONE_NUMBER\",\"password\":\"$PASSWORD\",\"countryCode\":\"ZW\",\"fullName\":\"Test User Local\",\"email\":\"$EMAIL\"}"
+REGISTER_PAYLOAD="{\"phoneNumber\":\"$PHONE_NUMBER\",\"password\":\"$PASSWORD\",\"countryCode\":\"ZW\",\"preferredLanguage\":\"en\",\"preferredCurrency\":\"ZWL\",\"fullName\":\"Test User Local\",\"email\":\"$EMAIL\"}"
 
 curl -s -X POST -H "Content-Type: application/json" -d "$REGISTER_PAYLOAD" http://localhost:3081/api/v1/auth/register | grep "success" && echo "Register OK" || echo "Register FAILED"
 

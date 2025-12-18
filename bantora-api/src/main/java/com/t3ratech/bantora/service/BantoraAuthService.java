@@ -5,6 +5,7 @@ import com.t3ratech.bantora.dto.auth.LoginRequest;
 import com.t3ratech.bantora.dto.auth.RegisterRequest;
 import com.t3ratech.bantora.entity.BantoraRefreshToken;
 import com.t3ratech.bantora.entity.BantoraUser;
+import com.t3ratech.bantora.repository.BantoraCountryRepository;
 import com.t3ratech.bantora.repository.BantoraRefreshTokenRepository;
 import com.t3ratech.bantora.repository.BantoraUserRepository;
 import com.t3ratech.bantora.security.Argon2PasswordEncoder;
@@ -33,6 +34,7 @@ public class BantoraAuthService {
     private static final Set<String> DEFAULT_ROLES = Set.of("ROLE_USER");
 
     private final BantoraUserRepository userRepository;
+    private final BantoraCountryRepository countryRepository;
     private final BantoraRefreshTokenRepository refreshTokenRepository;
     private final Argon2PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
@@ -46,24 +48,27 @@ public class BantoraAuthService {
 
         String phone = Objects.requireNonNull(request.getPhoneNumber(), "phoneNumber").trim();
         String password = Objects.requireNonNull(request.getPassword(), "password");
-        String countryCode = Objects.requireNonNull(request.getCountryCode(), "countryCode").trim();
+        String countryCode = Objects.requireNonNull(request.getCountryCode(), "countryCode").trim().toUpperCase();
+        String preferredCurrency = Objects.requireNonNull(request.getPreferredCurrency(), "preferredCurrency").trim().toUpperCase();
 
-        return userRepository.existsByPhoneNumber(phone)
-                .flatMap(exists -> {
-                    if (Boolean.TRUE.equals(exists)) {
-                        return Mono.error(new IllegalArgumentException("Phone number already registered"));
-                    }
-                    if (request.getEmail() != null && !request.getEmail().isBlank()) {
-                        return userRepository.existsByEmail(request.getEmail().trim())
-                                .flatMap(emailExists -> {
-                                    if (Boolean.TRUE.equals(emailExists)) {
-                                        return Mono.error(new IllegalArgumentException("Email already registered"));
-                                    }
-                                    return createUserAndIssueTokens(request, phone, password, countryCode);
-                                });
-                    }
-                    return createUserAndIssueTokens(request, phone, password, countryCode);
-                })
+        return countryRepository.findByCodeAndRegistrationEnabledTrue(countryCode)
+                .switchIfEmpty(Mono.error(new IllegalArgumentException("Country code not allowed")))
+                .then(userRepository.existsByPhoneNumber(phone)
+                        .flatMap(exists -> {
+                            if (Boolean.TRUE.equals(exists)) {
+                                return Mono.error(new IllegalArgumentException("Phone number already registered"));
+                            }
+                            if (request.getEmail() != null && !request.getEmail().isBlank()) {
+                                return userRepository.existsByEmail(request.getEmail().trim())
+                                        .flatMap(emailExists -> {
+                                            if (Boolean.TRUE.equals(emailExists)) {
+                                                return Mono.error(new IllegalArgumentException("Email already registered"));
+                                            }
+                                            return createUserAndIssueTokens(request, phone, password, countryCode, preferredCurrency);
+                                        });
+                            }
+                            return createUserAndIssueTokens(request, phone, password, countryCode, preferredCurrency);
+                        }))
                 .doOnError(e -> log.error("Auth register failed for {}: {}", phone, e.toString()));
     }
 
@@ -160,7 +165,7 @@ public class BantoraAuthService {
                 });
     }
 
-    private Mono<AuthResponse> createUserAndIssueTokens(RegisterRequest request, String phone, String password, String countryCode) {
+    private Mono<AuthResponse> createUserAndIssueTokens(RegisterRequest request, String phone, String password, String countryCode, String preferredCurrency) {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
 
         String requestedPreferredLanguage = request.getPreferredLanguage();
@@ -187,6 +192,7 @@ public class BantoraAuthService {
                             .verified(true)
                             .enabled(true)
                             .preferredLanguage(resolvedPreferredLanguage)
+                            .preferredCurrency(preferredCurrency)
                             .createdAt(now)
                             .updatedAt(now)
                             .lastLoginAt(now)
@@ -234,6 +240,7 @@ public class BantoraAuthService {
                                 .countryCode(user.getCountryCode())
                                 .roles(DEFAULT_ROLES)
                                 .preferredLanguage(user.getPreferredLanguage())
+                                .preferredCurrency(user.getPreferredCurrency())
                                 .build())
                         .build());
     }

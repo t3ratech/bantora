@@ -31,13 +31,22 @@ trigger: always_on
 - All environment-specific values live in `.env`. Docker Compose passes them as build args/env vars. Dockerfiles consume only the passed args. Spring configuration resolves strictly from external properties.
 - Never define defaults in code or properties. If a value is missing, the application must fail to start.
 
+## Database & Flyway (Clean-Slate Only)
+- **CRITICAL**: Always assume the database starts **blank**.
+- **CRITICAL**: Flyway must consist of **exactly two** migrations:
+  - **1 schema migration** (creates all tables, constraints, indexes)
+  - **1 data migration** (seed data only)
+- Do **not** write legacy/backfill/compatibility migrations.
+- Do **not** use Flyway baseline/baseline-on-migrate logic.
+- Design schema with strict constraints from day one (e.g., required categories/hashtags are enforced as NOT NULL / constraints where applicable).
+
 ## Testing Requirements
 - Every change requires automated tests where behaviour changes (unit, integration, or end-to-end as applicable).
 - Prefer targeted Gradle tasks via `bantora-docker.sh --test …`. Document test execution and outcomes.
 - Validate logs for absence of errors and correct configuration loading when investigating issues.
 - Maintain minimum 80% test coverage across all services.
 
-### UI Testing (Playwright)
+### UI Testing (Patrol)
 - **CRITICAL**: Manual screenshot verification is MANDATORY for all UI tests.
 - Every UI test must capture screenshots at key interaction points.
 - Screenshots MUST be manually opened and visually inspected before considering tests complete.

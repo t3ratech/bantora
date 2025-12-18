@@ -52,6 +52,7 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers("/api/v1/auth/**").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/v1/countries/**").permitAll()
                         .pathMatchers("/actuator/**").permitAll()
                         .pathMatchers(HttpMethod.GET, "/api/**").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/votes", "/api/ideas", "/api/ideas/*/upvote").authenticated()

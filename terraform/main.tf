@@ -4,6 +4,14 @@ terraform {
       source  = "hashicorp/google"
       version = ">= 4.51.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = ">= 3.0.0"
+    }
+    time = {
+      source  = "hashicorp/time"
+      version = ">= 0.10.0"
+    }
   }
 }
 
@@ -119,6 +127,11 @@ resource "google_sql_database_instance" "bantora_db" {
   deletion_protection = false
 }
 
+resource "time_sleep" "wait_for_cloudsql" {
+  depends_on      = [google_sql_database_instance.bantora_db]
+  create_duration = "60s"
+}
+
 resource "random_id" "db_suffix" {
   byte_length = 4
 }
@@ -126,12 +139,14 @@ resource "random_id" "db_suffix" {
 resource "google_sql_database" "database" {
   name     = "bantora_db"
   instance = google_sql_database_instance.bantora_db.name
+  depends_on = [time_sleep.wait_for_cloudsql]
 }
 
 resource "google_sql_user" "users" {
   name     = var.db_user
   instance = google_sql_database_instance.bantora_db.name
   password = var.db_password
+  depends_on = [time_sleep.wait_for_cloudsql]
 }
 
 # Redis (Memorystore)

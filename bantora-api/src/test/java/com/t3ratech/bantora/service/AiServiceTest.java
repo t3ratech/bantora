@@ -1,11 +1,6 @@
 package com.t3ratech.bantora.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.t3ratech.bantora.persistence.entity.BantoraIdea;
-import com.t3ratech.bantora.persistence.entity.BantoraPoll;
-import com.t3ratech.bantora.persistence.repository.IdeaRepository;
-import com.t3ratech.bantora.persistence.repository.PollRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,9 +36,23 @@ class AiServiceTest {
     private WebClient.ResponseSpec responseSpec;
 
     @Mock
-    private IdeaRepository ideaRepository;
+    private com.t3ratech.bantora.repository.BantoraHashtagStatsReadRepository hashtagStatsReadRepository;
     @Mock
-    private PollRepository pollRepository;
+    private com.t3ratech.bantora.repository.BantoraHashtagRepository hashtagRepository;
+    @Mock
+    private com.t3ratech.bantora.repository.BantoraIdeaReadRepository ideaReadRepository;
+    @Mock
+    private com.t3ratech.bantora.repository.BantoraIdeaRepository ideaRepository;
+    @Mock
+    private com.t3ratech.bantora.repository.BantoraPollRepository pollRepository;
+    @Mock
+    private com.t3ratech.bantora.repository.BantoraPollOptionRepository pollOptionRepository;
+    @Mock
+    private com.t3ratech.bantora.repository.BantoraPollHashtagLinkRepository pollHashtagLinkRepository;
+    @Mock
+    private com.t3ratech.bantora.repository.BantoraPollSourceIdeaLinkRepository pollSourceIdeaLinkRepository;
+    @Mock
+    private org.springframework.transaction.reactive.TransactionalOperator transactionalOperator;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -51,46 +60,27 @@ class AiServiceTest {
     @InjectMocks
     private AiService aiService;
 
-    private BantoraIdea testIdea;
-
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(aiService, "geminiApiKey", "test-key");
         ReflectionTestUtils.setField(aiService, "geminiUrl", "http://test-url");
-
-        testIdea = new BantoraIdea();
-        testIdea.setId(UUID.randomUUID());
-        testIdea.setContent("Test Idea Content");
-        testIdea.setStatus(BantoraIdea.IdeaStatus.PENDING);
     }
 
     @Test
-    void processIdea_shouldSuccessfullyCreatePoll() {
-        // Mock WebClient
-        when(webClientBuilder.build()).thenReturn(webClient);
-        when(webClient.post()).thenReturn(requestBodyUriSpec);
-        when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
-        when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
-        when(requestBodySpec.bodyValue(anyString())).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    void parseAiResponse_shouldParsePollsAndRejectedIdeas() {
+        String aiJson = "{" +
+                "\"polls\":[{" +
+                "\"title\":\"T\"," +
+                "\"description\":\"D\"," +
+                "\"categoryId\":\"00000000-0000-0000-0000-000000000001\"," +
+                "\"options\":[\"Yes\",\"No\"]," +
+                "\"sourceIdeaIds\":[\"00000000-0000-0000-0000-0000000000aa\"]" +
+                "}]," +
+                "\"rejectedIdeaIds\":[\"00000000-0000-0000-0000-0000000000bb\"]" +
+                "}";
 
-        // Mock Gemini Response
-        String geminiResponse = "{\"candidates\": [{\"content\": {\"parts\": [{\"text\": \"{\\\"title\\\": \\\"AI Generated Poll\\\", \\\"description\\\": \\\"Generated Description\\\"}\"}]}}]}";
-        when(responseSpec.bodyToMono(String.class)).thenReturn(Mono.just(geminiResponse));
-
-        // Mock Repositories
-        when(ideaRepository.save(any(BantoraIdea.class))).thenAnswer(i -> Mono.just(i.getArgument(0)));
-        when(pollRepository.save(any(BantoraPoll.class))).thenAnswer(i -> Mono.just(i.getArgument(0)));
-
-        // Run Test
-        StepVerifier.create(aiService.processIdea(testIdea))
+        StepVerifier.create(Mono.fromCallable(() -> aiService.parseAiResponse(aiJson)))
+                .expectNextMatches(resp -> resp.polls().size() == 1 && resp.rejectedIdeaIds().size() == 1)
                 .verifyComplete();
-
-        // Verify Interactions
-        verify(ideaRepository).save(argThat(idea -> idea.getStatus() == BantoraIdea.IdeaStatus.PROCESSED &&
-                idea.getProcessedAt() != null));
-
-        verify(pollRepository).save(argThat(poll -> poll.getTitle().equals("AI Generated Poll") &&
-                poll.getDescription().equals("Generated Description")));
     }
 }

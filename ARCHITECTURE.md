@@ -121,11 +121,19 @@ This modular approach provides:
 - Backend must validate that the selected country is African and reject non-African country codes.
 
 ### 5. AI Content Pipeline
-- **Input**: Raw user ideas (Right Column).
-- **Processing**: Scheduled job (Daily/On Restart) sends ideas to **Gemini API**.
-- **Output**: Summarized concepts and structured polls (Middle Column).
-- **Linkage**: Summaries maintain a reference to the original idea ID.
-- **Popularity**: High engagement moves items to the "Popular" list (Left Column).
+- **Input**: User-submitted ideas. Each idea requires:
+  - A **category**
+  - One or more **hashtags**
+- **Idea creation**: No AI processing occurs at idea creation time.
+- **Processing cadence**: A scheduled job runs **once per hour**.
+- **Hashtag selection**: Each run selects the **top 2 hashtags** with the highest count of **unprocessed ideas**.
+- **Prompt building**: For each selected hashtag, the system builds a single prompt containing as many idea summaries as possible (bounded by token/size limits), and instructs the AI to:
+  - Deduplicate / merge similar ideas
+  - Reject infeasible or unclear ideas
+  - Return a reduced, high-quality set of polls
+- **Output**: Polls (and options) are created from the AI response.
+- **Traceability**: Each created poll persists an explicit list of **source idea IDs** that contributed to the poll.
+- **Idempotency**: Ideas picked up by the hourly job are marked **processed** and must never be picked up again.
 
 ### 6. Regional Federation
 - Polls categorized by scope: National, SADC, ECOWAS, EAC, AU, Continental
@@ -213,7 +221,20 @@ SMS verification is not currently part of the running UI flow; `/api/v1/auth/ver
 ## Database Architecture
 
 ### Schema Design
+**Clean-slate only**: The database is always assumed to start blank.
+
+**Flyway policy**: Flyway must consist of exactly **two** migrations:
+- **1 schema migration**: creates all tables, constraints, and indexes
+- **1 data migration**: seed data only
+
+Do **not** write legacy/backfill/compatibility migrations and do **not** rely on Flyway baseline/baseline-on-migrate behavior.
+
 The authoritative schema is defined in Flyway migrations under `bantora-api/src/main/resources/db/migration`.
+
+The seed migration must include baseline data required for:
+- Registration (African countries)
+- Idea creation (categories and hashtags)
+- Predictable local development and UI testing (non-expired ACTIVE polls and PENDING ideas)
 
 Key tables (PostgreSQL 16):
 ```
@@ -222,14 +243,18 @@ bantora_user_role (phone_number, role)
 bantora_poll (id, title, description, creator_phone, scope, status, allow_anonymous, total_votes, ...)
 bantora_poll_option (id, poll_id, option_text, votes_count, ...)
 bantora_vote (id, poll_id, option_id, user_phone, anonymous, voted_at, ...)
-bantora_idea (id, user_phone, content, status, ai_summary, upvotes, ...)
+bantora_idea (id, user_phone, content, category_id, processed_at, upvotes, created_at, updated_at, ...)
+bantora_category (id, name, created_at, ...)
+bantora_hashtag (id, tag, created_at, ...)
+bantora_idea_hashtag (idea_id, hashtag_id)
+bantora_poll_source_idea (poll_id, idea_id)
 bantora_verification_code (phone_number, code, expires_at, attempts, verified)
 bantora_refresh_token (id, token, user_phone, expires_at, revoked)
 ```
 
 ### Data Persistence
 - **Reactive access**: Spring Data R2DBC repositories for runtime operations
-- **Migrations**: Flyway versioned migrations (`V1__legacy_schema.sql`, `V2__bantora_schema.sql`, `V3__bantora_test_data.sql`)
+- **Migrations**: Flyway migrations (exactly 1 schema + 1 seed data migration)
 - **JPA**: Enabled for schema validation and Flyway JDBC connectivity (dev profile uses `spring.jpa.hibernate.ddl-auto=validate`)
 
 ## API Communication Pattern
@@ -264,8 +289,15 @@ There are two response shapes currently in use:
 
 #### Ideas
 - `GET /api/ideas` - List pending ideas by default
-- `POST /api/ideas` - Create idea (authenticated)
+- `POST /api/ideas` - Create idea (authenticated; requires category + hashtags)
 - `POST /api/ideas/{id}/upvote` - Upvote idea (authenticated)
+
+#### Categories / Hashtags
+- `GET /api/categories` - List categories (for idea creation + filtering)
+- `GET /api/hashtags` - List/search hashtags (for idea creation + filtering)
+
+#### Poll Traceability
+- `GET /api/polls/{id}` - Must return poll detail including source idea IDs (and/or an embedded source idea list)
 
 ## Build & Deployment
 
@@ -274,7 +306,7 @@ There are two response shapes currently in use:
 - **JDK**: 25
 - **Framework**: Spring Boot 3.5.0 with WebFlux
 - **Build Tool**: Gradle wrapper 9.2.1
-- **Database**: PostgreSQL 16
+- **Database**: PostgreSQL 17
 - **Cache**: Redis 7.4
 - **Container**: Docker with multi-stage builds
 - **Orchestration**: Docker Compose
@@ -300,10 +332,10 @@ All builds and test runs are driven through `bantora-docker.sh`.
 # Build Flutter web (compile-time API_URL)
 ./bantora-docker.sh --build-web http://localhost:3083
 
-# Run tests (unit, integration, playwright, all)
+# Run tests (unit, integration, patrol, all)
 ./bantora-docker.sh --test unit
 ./bantora-docker.sh --test integration
-./bantora-docker.sh --test playwright
+./bantora-docker.sh --test patrol
 ./bantora-docker.sh --test all
 ```
 
@@ -325,9 +357,9 @@ All builds and test runs are driven through `bantora-docker.sh`.
 - **Gateway**: `http://localhost:3083/`
 
 ### UI Test Screenshots
-Playwright screenshots are written to:
+Patrol test artifacts are written to:
 
-`bantora-web/test-results/screenshots/*.png`
+`bantora-web/bantora_app/test-results/`
 
 ## Technical Specifications
 
@@ -376,7 +408,7 @@ public class OpenApiConfig {
 ### Testing Strategy
 - **Unit Tests**: JUnit 5 + Spring Boot Test
 - **Integration Tests**: Testcontainers (PostgreSQL) and Spring Boot test profile
-- **UI Tests**: Java Playwright (non-headless) with screenshot capture
+- **UI Tests**: Patrol 4.0 (Dart) running on web (`--device chrome`), using stable Flutter Semantics labels for interaction and assertions.
 
 ### CI/CD Pipeline
 - **GitHub Actions**: Automated builds, tests, and Docker image creation

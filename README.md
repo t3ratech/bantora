@@ -25,18 +25,26 @@ To empower Africans by providing a transparent, secure, and AI-driven platform f
 BANTORA acts as a **Pan-African digital referendum engine** where ideas evolve into consensus.
 
 The flow is simple:
-1.  **Propose**: Users submit raw ideas for reforms, projects, or policies.
-2.  **AI Processing**: The system (via Gemini API) analyzes these ideas daily (or on restart), summarizes them, and converts them into structured polls or questions.
-3.  **Vote**: Users vote on these summarized ideas/polls.
+1.  **Propose**: Users submit raw ideas for reforms, projects, or policies and must select:
+    - A **category**
+    - One or more **hashtags**
+2.  **AI Processing (Hourly)**: The system runs an hourly pipeline that:
+    - Selects the **top 2 hashtags** with the most unprocessed ideas
+    - Builds a size-bounded prompt from as many idea summaries as possible for that hashtag
+    - Asks the AI to deduplicate/merge similar ideas, reject infeasible/unclear ones, and produce a reduced set of high-quality polls
+    - Creates polls (and options) and links each poll back to the original idea IDs used
+    - Marks the picked-up ideas as processed so they are never picked up again
+3.  **Vote**: Users vote on these polls.
     *   **Upvote** an idea.
     *   **Vote Yes/No** on a poll.
     *   **Choose** between multiple options.
 4.  **Consensus**: Items with the most upvotes or "Yes" votes are deemed "Popular Concepts" and move to a prominent list.
 
-**The Web UI features a 3-Column Layout:**
-*   **Left Column (Popular)**: The "Hall of Fame" for ideas and polls that have gained significant traction.
-*   **Middle Column (New/AI)**: Freshly generated polls and summaries created by the AI from user submissions.
-*   **Right Column (Raw)**: A live feed of raw ideas posted by users, waiting to be picked up by the AI.
+**The Web UI uses a tabbed Home Page:**
+*   **Polls tab**: Current polls + popular polls.
+*   **Ideas tab**: New ideas + popular ideas.
+
+Both tabs support filtering by **category** and **hashtag**.
 
 *One platform. One voice. One Africa.*
 
@@ -46,10 +54,11 @@ The flow is simple:
 
 The **AI Service** is the engine that turns noise into signal.
 
-*   **Summarization**: Uses **Gemini API** to read user ideas and return a concise, neutral summary.
-*   **Linkage**: Clicking on an AI-generated summary takes the user back to the original raw idea for full context.
-*   **Poll Generation**: AI-assisted poll creation is scaffolded (see `AiService`) and currently creates poll records (title/description). It does not yet generate poll options end-to-end. If the Gemini call fails, the poll may be created with a generic error title/description.
-*   **Scheduling**: AI processing runs once a day or when the system is restarted to process new batch of ideas.
+*   **Summarization**: The system stores an AI-ready summary per idea (used for prompt building).
+*   **Hashtag batching**: The hourly job processes the 2 biggest unprocessed hashtags.
+*   **Poll generation**: The AI returns a reduced set of relevant polls (and options), after deduplication/feasibility filtering.
+*   **Traceability**: Every created poll stores the list of source idea IDs that were used.
+*   **Deep links + sharing**: Polls and ideas have dedicated links and share buttons (Facebook, X, WhatsApp, Threads, Email).
 
 Note: Users can only vote once per poll. Login via phone number is mandatory for all write actions (vote, submit idea, upvote).
 
@@ -148,7 +157,7 @@ Note: Users can only vote once per poll. Login via phone number is mandatory for
 - Authenticated-only vote, idea submission, and idea upvote
 - Search filtering across polls + ideas
 - Theme (light/dark) with persistence
-- Playwright UI tests (Java) with screenshot capture for manual review
+- Patrol 4.0 UI tests (Dart) with screenshot/manual verification support
 
 ---
 
@@ -304,6 +313,18 @@ bantora/
 ./bantora-docker.sh --rebuild-all
 ```
 
+### Database Seed Data (Local + Tests)
+
+The API uses Flyway migrations under `bantora-api/src/main/resources/db/migration`.
+
+- **`V1__bantora_schema.sql`** creates the full schema.
+- **`V2__bantora_seed.sql`** seeds:
+  - African country metadata (for registration)
+  - Categories and hashtags
+  - Baseline polls (ACTIVE and non-expired) and ideas
+
+Patrol UI tests rely on this baseline data to ensure the home screen is not empty.
+
 6. Access:
 
 - Web UI: `http://localhost:3080`
@@ -337,10 +358,10 @@ Run all tests:
 ./bantora-docker.sh --test all
 ```
 
-Run Playwright UI tests only:
+Run Patrol UI tests only:
 
 ```bash
-./bantora-docker.sh --test playwright
+./bantora-docker.sh --test patrol
 ```
 
 View logs:

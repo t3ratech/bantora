@@ -60,6 +60,9 @@ public class BantoraUser {
     @Column(name = "preferred_language", length = 5, nullable = false)
     @Builder.Default
     private String preferredLanguage = "en";
+
+    @Column(name = "preferred_currency", length = 3)
+    private String preferredCurrency;
     
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default

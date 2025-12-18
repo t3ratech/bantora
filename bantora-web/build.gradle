@@ -27,9 +27,6 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
     testImplementation 'org.postgresql:r2dbc-postgresql:1.0.6.RELEASE'
     
-    // Playwright
-    testImplementation 'com.microsoft.playwright:playwright:1.49.0'
-    
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -42,12 +39,6 @@ test {
     testLogging {
         events "passed", "skipped", "failed"
     }
-}
-
-tasks.register('installPlaywrightChromium', JavaExec) {
-    classpath = sourceSets.test.runtimeClasspath
-    mainClass = 'com.microsoft.playwright.CLI'
-    args 'install', 'chromium'
 }
 
 bootJar {

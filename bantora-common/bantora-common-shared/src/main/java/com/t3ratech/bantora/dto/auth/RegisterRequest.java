@@ -25,7 +25,7 @@ public class RegisterRequest {
     @NotBlank(message = "Phone number is required")
     @Pattern(
         regexp = "^\\+[1-9]\\d{1,14}$",
-        message = "Phone number must be in E.164 format (e.g., +263771234567)"
+        message = "Enter number with country code (e.g. +263771234567)"
     )
     private String phoneNumber;
     
@@ -44,4 +44,8 @@ public class RegisterRequest {
     @Pattern(regexp = "^(en|sw|yo|zu|am|ar|fr|pt|ha|ig|so|af|sn)$", message = "Unsupported language")
     @Builder.Default
     private String preferredLanguage = "en";
+
+    @NotBlank(message = "Preferred currency is required")
+    @Pattern(regexp = "^[A-Z]{3}$", message = "Currency must be ISO 4217 (e.g., ZAR, NGN)")
+    private String preferredCurrency;
 }

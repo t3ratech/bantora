@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/poll.dart';
+import '../models/idea.dart';
 import '../services/api_service.dart';
+import 'idea_detail_screen.dart';
 
 class PollDetailScreen extends StatefulWidget {
   final Poll poll;
   final ApiService apiService;
+  final List<Map<String, dynamic>> categories;
 
   const PollDetailScreen({
     super.key,
     required this.poll,
     required this.apiService,
+    required this.categories,
   });
 
   @override
@@ -20,6 +25,41 @@ class _PollDetailScreenState extends State<PollDetailScreen> {
   String? _selectedOptionId;
   bool _voting = false;
   bool _hasVoted = false;
+  bool _loadingSourceIdeas = true;
+  List<Idea> _sourceIdeas = [];
+
+  String _pollShareUrl() {
+    final origin = Uri.parse(widget.apiService.baseUrl).origin;
+    return '$origin/api/polls/${widget.poll.id}';
+  }
+
+  String _pollShareText(String categoryLabel) {
+    final buffer = StringBuffer();
+    buffer.writeln(widget.poll.title);
+    if (widget.poll.description.trim().isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln(widget.poll.description);
+    }
+    buffer.writeln();
+    buffer.writeln('Category: $categoryLabel');
+    buffer.writeln('Link: ${_pollShareUrl()}');
+    return buffer.toString().trim();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSourceIdeas();
+  }
+
+  Future<void> _loadSourceIdeas() async {
+    final ideas = await widget.apiService.getPollSourceIdeas(widget.poll.id);
+    if (!mounted) return;
+    setState(() {
+      _sourceIdeas = ideas;
+      _loadingSourceIdeas = false;
+    });
+  }
 
   int get _totalVotes {
     return widget.poll.options.fold<int>(
@@ -69,6 +109,7 @@ class _PollDetailScreenState extends State<PollDetailScreen> {
             builder: (context) => PollDetailScreen(
               poll: updatedPoll,
               apiService: widget.apiService,
+              categories: widget.categories,
             ),
           ),
         );
@@ -85,11 +126,29 @@ class _PollDetailScreenState extends State<PollDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final category = widget.categories.cast<Map<String, dynamic>>().firstWhere(
+          (c) => c['id'] == widget.poll.categoryId,
+          orElse: () => throw StateError('Unknown poll categoryId: ${widget.poll.categoryId}'),
+        );
+    final categoryLabelRaw = category['name'];
+    if (categoryLabelRaw is! String || categoryLabelRaw.isEmpty) {
+      throw StateError('Invalid category name for categoryId: ${widget.poll.categoryId}');
+    }
+    final categoryLabel = categoryLabelRaw;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Poll Details'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: () async {
+              await Share.share(_pollShareText(categoryLabel));
+            },
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -123,6 +182,11 @@ class _PollDetailScreenState extends State<PollDetailScreen> {
                     runSpacing: 8,
                     children: [
                       _buildInfoChip(
+                        Icons.category,
+                        categoryLabel,
+                        Colors.purple,
+                      ),
+                      _buildInfoChip(
                         Icons.how_to_vote,
                         '$_totalVotes votes',
                         Colors.blue,
@@ -143,6 +207,39 @@ class _PollDetailScreenState extends State<PollDetailScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 24),
+
+          const Text(
+            'Source Ideas',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          if (_loadingSourceIdeas)
+            const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
+          else if (_sourceIdeas.isEmpty)
+            const Text('No source ideas linked to this poll.')
+          else
+            ..._sourceIdeas.map((idea) {
+              return Card(
+                child: ListTile(
+                  title: Text(idea.content, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  subtitle: Text("#${idea.hashtags.join(' #')}"),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => IdeaDetailScreen(
+                          ideaId: idea.id,
+                          apiService: widget.apiService,
+                          categories: widget.categories,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }),
+
           const SizedBox(height: 24),
 
           // Voting Section

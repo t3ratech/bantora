@@ -25,7 +25,7 @@ public class VerifyRequest {
     @NotBlank(message = "Phone number is required")
     @Pattern(
         regexp = "^\\+[1-9]\\d{1,14}$",
-        message = "Phone number must be in E.164 format"
+        message = "Enter number with country code (e.g. +263771234567)"
     )
     private String phoneNumber;
     
